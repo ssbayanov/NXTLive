@@ -48,31 +48,30 @@ public class httpService {
 			try {
 				Log.d(TAG, "Try run mHttpService");
 				ss = new ServerSocket(TCP_SERVER_PORT);
-				
-				if(ss == null){	
+
+				if (ss == null) {
 					Log.d(TAG, "ss is null. Exit");
 					return;
 				}
-				
-				s = ss.accept();
-				Log.d(TAG, "Try create mHttpThread s2");
-				in = new BufferedReader(new InputStreamReader(
-						s.getInputStream()));
-				
-				out = new BufferedWriter(new OutputStreamWriter(
-						s.getOutputStream()));
-				
+
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 
 		public void run() {
-			Log.d(TAG, "mHttpThread running");
-			// Keep listening to the InputStream while connected
-			while (true) {
+			try {
+				Log.d(TAG, "mHttpThread running");
+				s = ss.accept();
+				Log.d(TAG, "Try create mHttpThread s5");
+				in = new BufferedReader(new InputStreamReader(
+						s.getInputStream()));
 
-				try {
+				out = new BufferedWriter(new OutputStreamWriter(
+						s.getOutputStream()));
+				// Keep listening to the InputStream while connected
+				while (true) {
+
 					// receive a message
 					String incomingMsg = in.readLine()
 							+ System.getProperty("line.separator");
@@ -90,9 +89,9 @@ public class httpService {
 
 					// SystemClock.sleep(5000);
 
-				} catch (IOException e) {
-					e.printStackTrace();
 				}
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 
