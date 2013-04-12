@@ -8,12 +8,12 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View.OnClickListener;
-import android.hardware.Camera;
-import android.hardware.Camera.CameraInfo;
-import android.os.Bundle;
-import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.Intent;
+
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -22,15 +22,19 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
-	private final static String DEBUG_TAG = "MakePhotoActivity";
-
-	private Camera camera;
-
-	private int cameraId = 0;
-
 	private TextView textDisplay;
 
 	private httpService mHttpService = null;
+
+	private MJPGStreamer mJPEGStreamer = null;
+
+	public static final int CAMERA_FOUND = 0;
+
+	public static final int CAMERA_NOT_FOUND = 1;
+	
+	public SurfaceView surfaceView;
+	
+	public static SurfaceHolder surfaceHolder;
 
 	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	@Override
@@ -42,16 +46,14 @@ public class MainActivity extends Activity {
 		textDisplay = (TextView) this.findViewById(R.id.editText1);
 		textDisplay.setText("");
 
-		// Init cam
-
-		if (!initCamera()) {
-			showToast("No camera found.");
-			finish();
-		}
-
 		// Init http server
 
+		surfaceView = (SurfaceView) findViewById(R.id.surfaceView1);
+		surfaceHolder = surfaceView.getHolder();
+
 		mHttpService = new httpService(this, mHandler);
+
+		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler);
 
 	}
 
@@ -62,55 +64,10 @@ public class MainActivity extends Activity {
 		return true;
 	}
 
-	public boolean initCamera() {
-
-		if (!getPackageManager()
-				.hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
-			return false;
-		} else {
-			cameraId = findFrontFacingCamera();
-			camera = Camera.open(cameraId);
-			if (cameraId < 0) {
-				return false;
-			} else {
-				return true;
-			}
-		}
-	}
-
 	public void showToast(String text) {
 
 		Toast.makeText(this, text, Toast.LENGTH_LONG).show();
 
-	}
-
-	public void onClick(View view) {
-
-		camera.takePicture(null, null,
-				new PhotoHandler(getApplicationContext()));
-
-	}
-
-	private int findFrontFacingCamera() {
-		int cameraId = -1;
-		// Search for the front facing camera
-		int numberOfCameras = Camera.getNumberOfCameras();
-
-		for (int i = 0; i < numberOfCameras; i++)
-
-		{
-
-			CameraInfo info = new CameraInfo();
-
-			Camera.getCameraInfo(i, info);
-
-			if (info.facing == CameraInfo.CAMERA_FACING_BACK) {
-				Log.d(DEBUG_TAG, "Camera found");
-				cameraId = i;
-				break;
-			}
-		}
-		return cameraId;
 	}
 
 	private final Handler mHandler = new Handler() {
@@ -121,21 +78,57 @@ public class MainActivity extends Activity {
 		}
 	};
 
+	private final Handler mStreamerHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			switch (msg.what) {
+			case CAMERA_FOUND:
+				showToast("Камера найдена");
+				break;
+			case CAMERA_NOT_FOUND:
+				showToast("Камера не найдена");
+				break;
+			}
+		}
+	};
+
 	@Override
 	protected void onPause() {
-
-		if (camera != null) {
-			camera.release();
-			camera = null;
-		}
+		if (mJPEGStreamer != null)
+			if (mJPEGStreamer.camera != null) {
+				mJPEGStreamer.camera.release();
+				mJPEGStreamer.camera = null;
+			}
 		super.onPause();
+	}
+
+	@Override
+	protected void onDestroy() {
+		mJPEGStreamer.stop();
+		mHttpService.stop();
+		super.onDestroy();
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.action_startServer:
-			mHttpService.start();
+			if (!mHttpService.isEnabled) {
+				mHttpService.start();
+				item.setTitle(R.string.stop_server);
+			} else {
+				mHttpService.stop();
+				item.setTitle(R.string.start_server);
+			}
+			return true;
+		case R.id.action_startStream:
+			if (!mJPEGStreamer.isEnabled) {
+				mJPEGStreamer.start();
+				item.setTitle(R.string.stop_stream);
+			} else {
+				mJPEGStreamer.stop();
+				item.setTitle(R.string.start_stream);
+			}
 			return true;
 		}
 		return false;

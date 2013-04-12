@@ -5,5 +5,8 @@
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
     <string name="start_server">Запустить сервер</string>
+    <string name="stop_server">Остановить сервер</string>
+    <string name="start_stream">Запустить поток</string>
+    <string name="stop_stream">Остановить поток</string>
 
 </resources>

@@ -1,6 +1,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
 
-    <item android:id="@+id/action_startServer" android:title="@string/start_server"></item><item
+    <item android:id="@+id/action_startServer" android:title="@string/start_server"></item>
+    <item android:id="@+id/action_startStream" android:title="@string/start_stream"></item>
+    <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:showAsAction="never"
