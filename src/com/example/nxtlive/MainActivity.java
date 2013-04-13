@@ -31,9 +31,9 @@ public class MainActivity extends Activity {
 	public static final int CAMERA_FOUND = 0;
 
 	public static final int CAMERA_NOT_FOUND = 1;
-	
+
 	public SurfaceView surfaceView;
-	
+
 	public static SurfaceHolder surfaceHolder;
 
 	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
@@ -53,8 +53,6 @@ public class MainActivity extends Activity {
 
 		mHttpService = new httpService(this, mHandler);
 
-		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler);
-
 	}
 
 	@Override
@@ -67,6 +65,12 @@ public class MainActivity extends Activity {
 	public void showToast(String text) {
 
 		Toast.makeText(this, text, Toast.LENGTH_LONG).show();
+
+	}
+
+	public void showIp(String text) {
+
+		textDisplay.setText(text);
 
 	}
 
@@ -83,10 +87,12 @@ public class MainActivity extends Activity {
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 			case CAMERA_FOUND:
-				showToast("Камера найдена");
+				Toast.makeText(getApplicationContext(), "Камера найдена",
+						Toast.LENGTH_LONG).show();
 				break;
 			case CAMERA_NOT_FOUND:
-				showToast("Камера не найдена");
+				Toast.makeText(getApplicationContext(), "Камера не найдена",
+						Toast.LENGTH_LONG).show();
 				break;
 			}
 		}
@@ -122,6 +128,8 @@ public class MainActivity extends Activity {
 			}
 			return true;
 		case R.id.action_startStream:
+			if (mJPEGStreamer == null)
+				mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler);
 			if (!mJPEGStreamer.isEnabled) {
 				mJPEGStreamer.start();
 				item.setTitle(R.string.stop_stream);

@@ -15,7 +15,9 @@ import android.hardware.Camera.Parameters;
 import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.Size;
 import android.content.res.AssetManager;
+import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -42,18 +44,39 @@ public class MJPGStreamer {
 
 	private byte[] lastPicture = null;
 
+	private boolean isLoad = false;
+
+	InputStream in = null;
+	OutputStream out = null;
+	ServerSocket ss = null;
+	Socket s = null;
+
 	public MJPGStreamer(Context context, Handler handler) {
 		mainContext = context;
 		mHandler = handler;
 
-		try{
-		if (camera != null) {
-	        camera.release();
-	    }
-		camera = Camera.open();}
-		catch(Exception e) {
+		try {
+			if (camera != null) {
+				camera.release();
+			}
+			camera = Camera.open();
+		} catch (Exception e) {
 			e.printStackTrace();
 			mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
+
+		}
+
+		try {
+			Log.d(TAG, "Try run mMJPGThread");
+			ss = new ServerSocket(TCP_SERVER_PORT);
+
+			if (ss == null) {
+				Log.d(TAG, "ss is null. Exit");
+				return;
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 		/*
@@ -113,53 +136,50 @@ public class MJPGStreamer {
 	}
 
 	public synchronized void stop() {
-
+		if (camera != null)
+			camera.release();
 		// Start the thread to listen on a BluetoothServerSocket
-		if (mMJPGThread == null) {
+		if (mMJPGThread != null) {
 			mMJPGThread.cancel();
 			isEnabled = false;
-			camera.release();
+
 		}
 	}
 
 	private class AcceptThread extends Thread {
-		InputStream in = null;
-		OutputStream out = null;
-		ServerSocket ss = null;
-		Socket s = null;
-
-		public AcceptThread() {
-			try {
-				Log.d(TAG, "Try run mMJPGThread");
-				ss = new ServerSocket(TCP_SERVER_PORT);
-
-				if (ss == null) {
-					Log.d(TAG, "ss is null. Exit");
-					return;
-				}
-
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
 
 		PictureCallback myPictureCallback_JPG = new PictureCallback() {
 
 			@Override
 			public void onPictureTaken(byte[] data, Camera cam) {
 				lastPicture = data;
+				isLoad = true;
 			}
 		};
 
 		public void run() {
 			try {
 				Log.d(TAG, "mMJPGThread running");
+				camera.setDisplayOrientation(90);
+
+				camera.setPreviewDisplay(MainActivity.surfaceHolder);
+
+				List<Size> supportedPreviewSizes = camera.getParameters()
+						.getSupportedPreviewSizes();
+				Parameters parameters = camera.getParameters();
+				parameters.setPreviewSize(supportedPreviewSizes.get(0).width,
+						supportedPreviewSizes.get(0).height);
+				camera.setParameters(parameters);
+
+				camera.startPreview();
 
 				while (!ss.isClosed()) {
 					if (s != null) {
 						s.close();
 					}
 					s = ss.accept(); // wait new connection
+
+					Log.d(TAG, "LocalIp " + s.getLocalAddress().toString());
 
 					if (D)
 						Log.d(TAG, "Try create mMJPGThread");
@@ -185,45 +205,39 @@ public class MJPGStreamer {
 					if (D)
 						Log.d(TAG, "query get. Start sending");
 
-					out.write(("HTTP/1.1 200 OK\r\n"
-					       + "Content-Type: multipart/x-mixed-replace;boundary=b\r\n"
-					       + "Cache-Control: no-store\r\n"
-					       + "Pragma: no-cache\r\n"
-					       + "Connection: close\r\n"
-					       + "\r\n").getBytes());
-
 					// PhotoHandler jpeger = new PhotoHandler();
-					camera.setDisplayOrientation(90);
 
-					camera.setPreviewDisplay(MainActivity.surfaceHolder);
+					out.write(("HTTP/1.1 200 OK\r\n"
+							+ "Content-Type: multipart/x-mixed-replace;boundary=b\r\n"
+							+ "Cache-Control: no-store\r\n"
+							+ "Pragma: no-cache\r\n" + "Connection: close\r\n"
+							+ "\r\n").getBytes());
+					isLoad = true;
 
-					List<Size> supportedPreviewSizes = camera.getParameters()
-							.getSupportedPreviewSizes();
-					Parameters parameters = camera.getParameters();
-					parameters.setPreviewSize(
-							supportedPreviewSizes.get(1).width,
-							supportedPreviewSizes.get(1).height);
-					camera.setParameters(parameters);
-
-					camera.startPreview();
-
-					while (!s.isClosed()) {
-						camera.takePicture(null, null, myPictureCallback_JPG);
-						SystemClock.sleep(70);
+					while (!s.isOutputShutdown()) {
+						if (isLoad) {
+							camera.takePicture(null, null,
+									myPictureCallback_JPG);
+							isLoad = false;
+						}
 						if (lastPicture != null) {
-								
-							out.write(("--b\r\n"
-						            + "Content-Type: image/jpeg\r\n"
-						            + "Content-length: " + lastPicture.length + "\r\n\r\n")
-									.getBytes());
+
+							String outBuf = "--b\r\n"
+									+ "Content-Type: image/jpeg\r\n"
+									+ "Content-length: " + lastPicture.length
+									+ "\r\n\r\n";
+							//Log.d(TAG, "send: " + outBuf);
+							out.write(outBuf.getBytes());
 							out.write(lastPicture);
 							out.write("\r\n\r\n".getBytes());
 							out.flush();
-						} else {
 							
+						} else {
+
 							if (D)
 								Log.d(TAG, "Nothing to send");
 						}
+						SystemClock.sleep(50);
 					}
 
 					if (D)
@@ -236,20 +250,22 @@ public class MJPGStreamer {
 				e.printStackTrace();
 				mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
 			}
+			camera.release();
 		}
 
 		public void cancel() {
 			if (ss != null) {
 				if (D)
-					Log.d(TAG, "Try stop mHttpThread");
+					Log.d(TAG, "Try stop mMJPGThread");
 				try {
+					if (camera != null)
+						camera.release();
 					s.close();
 					ss.close();
-					camera.release();
-				} catch (IOException e) {
+				} catch (Exception e) {
 					e.printStackTrace();
 					Log.e(TAG, "Error close sockets");
-				} 
+				}
 			}
 		};
 	};

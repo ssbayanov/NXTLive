@@ -47,7 +47,7 @@ public class httpService {
 	public synchronized void stop() {
 
 		// Start the thread to listen on a BluetoothServerSocket
-		if (mHttpThread == null) {
+		if (mHttpThread != null) {
 			mHttpThread.cancel();
 			isEnabled = false;
 		}
