@@ -46,7 +46,15 @@ public class MJPGStreamer {
 		mainContext = context;
 		mHandler = handler;
 
-		camera = Camera.open();
+		try{
+		if (camera != null) {
+	        camera.release();
+	    }
+		camera = Camera.open();}
+		catch(Exception e) {
+			e.printStackTrace();
+			mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
+		}
 
 		/*
 		 * if (!initCamera()) {
@@ -177,14 +185,12 @@ public class MJPGStreamer {
 					if (D)
 						Log.d(TAG, "query get. Start sending");
 
-					out.write(("HTTP/1.0 200 OK\r\n"
-							+ "Server: YourServerName\r\n"
-							+ "Connection: close\r\n" + "Max-Age: 0\r\n"
-							+ "Expires: 0\r\n"
-							+ "Cache-Control: no-cache, private\r\n"
-							+ "Pragma: no-cache\r\n"
-							+ "Content-Type: multipart/x-mixed-replace; "
-							+ "boundary=--BoundaryString\r\n\r\n").getBytes());
+					out.write(("HTTP/1.1 200 OK\r\n"
+					       + "Content-Type: multipart/x-mixed-replace;boundary=b\r\n"
+					       + "Cache-Control: no-store\r\n"
+					       + "Pragma: no-cache\r\n"
+					       + "Connection: close\r\n"
+					       + "\r\n").getBytes());
 
 					// PhotoHandler jpeger = new PhotoHandler();
 					camera.setDisplayOrientation(90);
@@ -203,17 +209,18 @@ public class MJPGStreamer {
 
 					while (!s.isClosed()) {
 						camera.takePicture(null, null, myPictureCallback_JPG);
+						SystemClock.sleep(70);
 						if (lastPicture != null) {
-
-							out.write(("--BoundaryString\r\n"
-									+ "Content-type: image/jpg\r\n"
-									+ "Content-Length: " + lastPicture.length + "\r\n\r\n")
+								
+							out.write(("--b\r\n"
+						            + "Content-Type: image/jpeg\r\n"
+						            + "Content-length: " + lastPicture.length + "\r\n\r\n")
 									.getBytes());
 							out.write(lastPicture);
 							out.write("\r\n\r\n".getBytes());
 							out.flush();
 						} else {
-							SystemClock.sleep(500);
+							
 							if (D)
 								Log.d(TAG, "Nothing to send");
 						}
@@ -225,6 +232,9 @@ public class MJPGStreamer {
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
+				mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
 			}
 		}
 
@@ -239,7 +249,7 @@ public class MJPGStreamer {
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e(TAG, "Error close sockets");
-				}
+				} 
 			}
 		};
 	};
