@@ -1,20 +1,18 @@
 package com.example.nxtlive;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.List;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
-import android.hardware.Camera.CameraInfo;
-import android.hardware.Camera.Parameters;
-import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.Size;
-import android.content.res.AssetManager;
+
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -22,6 +20,13 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 
 public class MJPGStreamer {
 	private static final String TAG = "MJPGStreamer";
@@ -40,31 +45,37 @@ public class MJPGStreamer {
 
 	public Camera camera;
 
-	private int cameraId = 0;
-
 	private byte[] lastPicture = null;
 
 	private boolean isLoad = false;
+
+	private boolean inPreview = false;
+
+	private View screenView = null;
+
+	private boolean cameraConfigured = false;
+
+	public SurfaceView surfaceView;
+
+	public SurfaceHolder surfaceHolder;
 
 	InputStream in = null;
 	OutputStream out = null;
 	ServerSocket ss = null;
 	Socket s = null;
 
-	public MJPGStreamer(Context context, Handler handler) {
+	@SuppressWarnings("deprecation")
+	public MJPGStreamer(Context context, Handler handler, SurfaceView sV, View v) {
 		mainContext = context;
 		mHandler = handler;
 
-		try {
-			if (camera != null) {
-				camera.release();
-			}
-			camera = Camera.open();
-		} catch (Exception e) {
-			e.printStackTrace();
-			mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
+		surfaceView = sV;
+		surfaceHolder = surfaceView.getHolder();
+		surfaceHolder.addCallback(surfaceCallback);
+		surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+		surfaceHolder.lockCanvas();
 
-		}
+		screenView = v;
 
 		try {
 			Log.d(TAG, "Try run mMJPGThread");
@@ -79,51 +90,125 @@ public class MJPGStreamer {
 			e.printStackTrace();
 		}
 
+		startPreview();
+
 		/*
-		 * if (!initCamera()) {
-		 * mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND); }
-		 * mHandler.obtainMessage(MainActivity.CAMERA_FOUND);
+		 * try { if (camera != null) { camera.release(); } camera =
+		 * Camera.open(); } catch (Exception e) { e.printStackTrace();
+		 * mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
+		 * 
+		 * }
+		 * 
+		 * try { Log.d(TAG, "Try run mMJPGThread"); ss = new
+		 * ServerSocket(TCP_SERVER_PORT);
+		 * 
+		 * if (ss == null) { Log.d(TAG, "ss is null. Exit"); return; }
+		 * 
+		 * } catch (IOException e) { e.printStackTrace(); }
 		 */
 
 	}
 
-	public boolean initCamera() {
+	private Camera.Size getBestPreviewSize(int width, int height,
+			Camera.Parameters parameters) {
+		Camera.Size result = null;
 
-		if (!mainContext.getPackageManager().hasSystemFeature(
-				PackageManager.FEATURE_CAMERA)) {
-			return false;
-		} else {
-			cameraId = findFrontFacingCamera();
-			camera = Camera.open();
-			if (cameraId < 0) {
-				return false;
+		for (Camera.Size size : parameters.getSupportedPreviewSizes()) {
+			if (size.width <= width && size.height <= height) {
+				if (result == null) {
+					result = size;
+				} else {
+					int resultArea = result.width * result.height;
+					int newArea = size.width * size.height;
+
+					if (newArea > resultArea) {
+						result = size;
+					}
+				}
+			}
+		}
+
+		return (result);
+	}
+
+	private Camera.Size getSmallestPictureSize(Camera.Parameters parameters) {
+		Camera.Size result = null;
+
+		for (Camera.Size size : parameters.getSupportedPictureSizes()) {
+			if (result == null) {
+				result = size;
 			} else {
-				return true;
+				int resultArea = result.width * result.height;
+				int newArea = size.width * size.height;
+
+				if (newArea < resultArea) {
+					result = size;
+				}
+			}
+		}
+
+		return (result);
+	}
+
+	private void initPreview(int width, int height) {
+		if (camera != null && surfaceHolder.getSurface() != null) {
+			try {
+				camera.setPreviewDisplay(surfaceHolder);
+			} catch (Throwable t) {
+				Log.e("PreviewDemo-surfaceCallback",
+						"Exception in setPreviewDisplay()", t);
+				/*
+				 * Toast.makeText(PictureDemo.this, t.getMessage(),
+				 * Toast.LENGTH_LONG).show();
+				 */
+			}
+
+			if (!cameraConfigured) {
+				Camera.Parameters parameters = camera.getParameters();
+				Camera.Size size = getBestPreviewSize(width, height, parameters);
+				Camera.Size pictureSize = getSmallestPictureSize(parameters);
+
+				if (size != null && pictureSize != null) {
+					parameters.setPreviewSize(size.width, size.height);
+					parameters.setPictureSize(pictureSize.width,
+							pictureSize.height);
+					parameters.setPictureFormat(ImageFormat.JPEG);
+					parameters.setPreviewFormat(ImageFormat.RGB_565);
+
+					/* camera.setPreviewDisplay(MainActivity.surfaceHolder); */
+
+					parameters.setJpegQuality(30);
+
+					camera.setParameters(parameters);
+					camera.setDisplayOrientation(90);
+					cameraConfigured = true;
+				}
 			}
 		}
 	}
 
-	private int findFrontFacingCamera() {
-		int cameraId = -1;
-		// Search for the front facing camera
-		int numberOfCameras = Camera.getNumberOfCameras();
-
-		for (int i = 0; i < numberOfCameras; i++)
-
-		{
-
-			CameraInfo info = new CameraInfo();
-
-			Camera.getCameraInfo(i, info);
-
-			if (info.facing == CameraInfo.CAMERA_FACING_BACK) {
-				Log.d(TAG, "Camera found");
-				cameraId = i;
-				break;
-			}
+	private void startPreview() {
+		if (cameraConfigured && camera != null) {
+			camera.startPreview();
+			inPreview = true;
 		}
-		return cameraId;
 	}
+
+	SurfaceHolder.Callback surfaceCallback = new SurfaceHolder.Callback() {
+		public void surfaceCreated(SurfaceHolder holder) {
+			// no-op -- wait until surfaceChanged()
+		}
+
+		public void surfaceChanged(SurfaceHolder holder, int format, int width,
+				int height) {
+			initPreview(width, height);
+			startPreview();
+		}
+
+		public void surfaceDestroyed(SurfaceHolder holder) {
+			// no-op
+		}
+	};
 
 	public synchronized void start() {
 
@@ -146,61 +231,80 @@ public class MJPGStreamer {
 		}
 	}
 
-	private class AcceptThread extends Thread {
+	public void onResume() {
 
-		PictureCallback myPictureCallback_JPG = new PictureCallback() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+			Camera.CameraInfo info = new Camera.CameraInfo();
 
-			@Override
-			public void onPictureTaken(byte[] data, Camera cam) {
-				lastPicture = data;
-				isLoad = true;
+			for (int i = 0; i < Camera.getNumberOfCameras(); i++) {
+				Camera.getCameraInfo(i, info);
+
+				if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+					camera = Camera.open(i);
+				}
 			}
-		};
+		}
+
+		if (camera == null) {
+			camera = Camera.open();
+		}
+
+		startPreview();
+	}
+
+	Camera.PreviewCallback JPGPrewCallback = new Camera.PreviewCallback() {
+
+		@Override
+		public void onPreviewFrame(byte[] data, Camera camera) {
+			// TODO Auto-generated method stub
+			
+			Size previewSize = camera.getParameters().getPreviewSize(); 
+			YuvImage yuvimage=new YuvImage(data, ImageFormat.NV21, previewSize.width, previewSize.height, null);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			yuvimage.compressToJpeg(new Rect(0, 0, previewSize.width, previewSize.height), 50, baos);
+			baos.toByteArray();
+
+			/*ByteArrayOutputStream stream = new ByteArrayOutputStream();
+			
+			photo.compress(Bitmap.CompressFormat.JPEG, 30, stream);
+
+			//lastPicture = new byte[stream.toByteArray().length];*/
+			lastPicture = baos.toByteArray();
+		}
+	};
+
+	Camera.PictureCallback JPGCallback = new Camera.PictureCallback() {
+		public void onPictureTaken(byte[] data, Camera camera) {
+			lastPicture = new byte[data.length];
+			lastPicture = data;
+			startPreview();
+			inPreview = true;
+		}
+	};
+
+	private class AcceptThread extends Thread {
 
 		public void run() {
 			try {
 				Log.d(TAG, "mMJPGThread running");
-				camera.setDisplayOrientation(90);
-
-				camera.setPreviewDisplay(MainActivity.surfaceHolder);
-
-				List<Size> supportedPreviewSizes = camera.getParameters()
-						.getSupportedPreviewSizes();
-				Parameters parameters = camera.getParameters();
-				parameters.setPreviewSize(supportedPreviewSizes.get(0).width,
-						supportedPreviewSizes.get(0).height);
-				camera.setParameters(parameters);
-
-				camera.startPreview();
 
 				while (!ss.isClosed()) {
 					if (s != null) {
 						s.close();
 					}
+
 					s = ss.accept(); // wait new connection
 
 					Log.d(TAG, "LocalIp " + s.getLocalAddress().toString());
 
-					if (D)
-						Log.d(TAG, "Try create mMJPGThread");
-
 					in = s.getInputStream();
 
 					out = s.getOutputStream();
-					// Keep listening to the InputStream while connected
-
-					if (D)
-						Log.d(TAG, "mMJPGThread streams created");
 
 					int size = in.available(); // get size query
-
 					byte[] buffer = new byte[size];
-
 					in.read(buffer); // read all from buffer
-
 					String query = new String(buffer); // query need for parsing
-
-					// Log.i("TcpServer", "received: " + query);
 
 					if (D)
 						Log.d(TAG, "query get. Start sending");
@@ -214,29 +318,58 @@ public class MJPGStreamer {
 							+ "\r\n").getBytes());
 					isLoad = true;
 
-					while (!s.isOutputShutdown()) {
-						if (isLoad) {
-							camera.takePicture(null, null,
-									myPictureCallback_JPG);
-							isLoad = false;
-						}
-						if (lastPicture != null) {
+					camera.setPreviewCallback(JPGPrewCallback);
 
+					while (!s.isOutputShutdown()) {
+
+						// View rv = surfaceView;
+						/*
+						 * Bitmap photo =
+						 * Bitmap.createBitmap(surfaceView.getWidth(),
+						 * surfaceView.getHeight(), Bitmap.Config.ARGB_8888);;
+						 * 
+						 * Canvas c = new Canvas(photo); surfaceView.draw(c);
+						 * 
+						 * /*rv.setDrawingCacheEnabled(true); photo =
+						 * Bitmap.createBitmap(rv.getDrawingCache());
+						 * rv.setDrawingCacheEnabled(false);
+						 * 
+						 * ByteArrayOutputStream stream = new
+						 * ByteArrayOutputStream();
+						 * 
+						 * photo.compress(Bitmap.CompressFormat.JPEG, 10,
+						 * stream);
+						 * 
+						 * lastPicture = new byte[stream.toByteArray().length];
+						 * lastPicture = stream.toByteArray();
+						 */
+						if (lastPicture != null) {
 							String outBuf = "--b\r\n"
 									+ "Content-Type: image/jpeg\r\n"
 									+ "Content-length: " + lastPicture.length
 									+ "\r\n\r\n";
-							//Log.d(TAG, "send: " + outBuf);
+							// Log.d(TAG, "send: " + outBuf);
 							out.write(outBuf.getBytes());
+
 							out.write(lastPicture);
 							out.write("\r\n\r\n".getBytes());
 							out.flush();
-							
 						} else {
-
 							if (D)
 								Log.d(TAG, "Nothing to send");
 						}
+
+						/*
+						 * if (isLoad) { camera.takePicture(null, null,
+						 * JPGCallback); isLoad = false; } if (lastPicture !=
+						 * null) {
+						 * 
+						 * 
+						 * 
+						 * } else {
+						 * 
+						 * if (D) Log.d(TAG, "Nothing to send"); }
+						 */
 						SystemClock.sleep(50);
 					}
 
@@ -245,12 +378,14 @@ public class MJPGStreamer {
 
 				}
 			} catch (IOException e) {
+				cancel();
 				e.printStackTrace();
 			} catch (Exception e) {
 				e.printStackTrace();
+				cancel();
 				mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
 			}
-			camera.release();
+
 		}
 
 		public void cancel() {

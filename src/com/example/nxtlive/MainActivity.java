@@ -12,7 +12,10 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View.OnClickListener;
 import android.content.pm.PackageManager;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 
 import android.util.Log;
 import android.view.View;
@@ -43,15 +46,20 @@ public class MainActivity extends Activity {
 		// Init layout
 		setContentView(R.layout.activity_main);
 
-		textDisplay = (TextView) this.findViewById(R.id.editText1);
-		textDisplay.setText("");
+		/*textDisplay = (TextView) this.findViewById(R.id.editText1);
+		textDisplay.setText("");*/
 
 		// Init http server
 
 		surfaceView = (SurfaceView) findViewById(R.id.surfaceView1);
-		surfaceHolder = surfaceView.getHolder();
+		
+
+		surfaceView.setDrawingCacheEnabled(true);
 
 		mHttpService = new httpService(this, mHandler);
+
+		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler, surfaceView,
+				getWindow().getDecorView().getRootView());
 
 	}
 
@@ -110,9 +118,19 @@ public class MainActivity extends Activity {
 
 	@Override
 	protected void onDestroy() {
-		mJPEGStreamer.stop();
-		mHttpService.stop();
+		if (mJPEGStreamer != null)
+			mJPEGStreamer.stop();
+		if (mHttpService != null)
+			mHttpService.stop();
 		super.onDestroy();
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		if (mJPEGStreamer != null)
+			mJPEGStreamer.onResume();
+
 	}
 
 	@Override
@@ -128,8 +146,7 @@ public class MainActivity extends Activity {
 			}
 			return true;
 		case R.id.action_startStream:
-			if (mJPEGStreamer == null)
-				mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler);
+
 			if (!mJPEGStreamer.isEnabled) {
 				mJPEGStreamer.start();
 				item.setTitle(R.string.stop_stream);
