@@ -8,22 +8,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
@@ -39,19 +32,13 @@ public class MJPGStreamer {
 
 	private static final int TCP_SERVER_PORT = 8081;
 
-	private Context mainContext = null;
-
 	public boolean isEnabled = false;
 
 	public Camera camera;
 
 	private byte[] lastPicture = null;
 
-	private boolean isLoad = false;
-
 	private boolean inPreview = false;
-
-	private View screenView = null;
 
 	private boolean cameraConfigured = false;
 
@@ -64,18 +51,14 @@ public class MJPGStreamer {
 	ServerSocket ss = null;
 	Socket s = null;
 
-	@SuppressWarnings("deprecation")
-	public MJPGStreamer(Context context, Handler handler, SurfaceView sV, View v) {
-		mainContext = context;
+	public MJPGStreamer(Context context, Handler handler, SurfaceView sV) {
 		mHandler = handler;
 
 		surfaceView = sV;
 		surfaceHolder = surfaceView.getHolder();
 		surfaceHolder.addCallback(surfaceCallback);
-		surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+		// surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 		surfaceHolder.lockCanvas();
-
-		screenView = v;
 
 		try {
 			Log.d(TAG, "Try run mMJPGThread");
@@ -92,20 +75,7 @@ public class MJPGStreamer {
 
 		startPreview();
 
-		/*
-		 * try { if (camera != null) { camera.release(); } camera =
-		 * Camera.open(); } catch (Exception e) { e.printStackTrace();
-		 * mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
-		 * 
-		 * }
-		 * 
-		 * try { Log.d(TAG, "Try run mMJPGThread"); ss = new
-		 * ServerSocket(TCP_SERVER_PORT);
-		 * 
-		 * if (ss == null) { Log.d(TAG, "ss is null. Exit"); return; }
-		 * 
-		 * } catch (IOException e) { e.printStackTrace(); }
-		 */
+		mHandler.obtainMessage(MainActivity.CAMERA_FOUND).sendToTarget();
 
 	}
 
@@ -131,24 +101,18 @@ public class MJPGStreamer {
 		return (result);
 	}
 
-	private Camera.Size getSmallestPictureSize(Camera.Parameters parameters) {
-		Camera.Size result = null;
-
-		for (Camera.Size size : parameters.getSupportedPictureSizes()) {
-			if (result == null) {
-				result = size;
-			} else {
-				int resultArea = result.width * result.height;
-				int newArea = size.width * size.height;
-
-				if (newArea < resultArea) {
-					result = size;
-				}
-			}
-		}
-
-		return (result);
-	}
+	/*
+	 * private Camera.Size getSmallestPictureSize(Camera.Parameters parameters)
+	 * { Camera.Size result = null;
+	 * 
+	 * for (Camera.Size size : parameters.getSupportedPictureSizes()) { if
+	 * (result == null) { result = size; } else { int resultArea = result.width
+	 * * result.height; int newArea = size.width * size.height;
+	 * 
+	 * if (newArea < resultArea) { result = size; } } }
+	 * 
+	 * return (result); }
+	 */
 
 	private void initPreview(int width, int height) {
 		if (camera != null && surfaceHolder.getSurface() != null) {
@@ -166,21 +130,17 @@ public class MJPGStreamer {
 			if (!cameraConfigured) {
 				Camera.Parameters parameters = camera.getParameters();
 				Camera.Size size = getBestPreviewSize(width, height, parameters);
-				Camera.Size pictureSize = getSmallestPictureSize(parameters);
+				// Camera.Size pictureSize = getSmallestPictureSize(parameters);
 
-				if (size != null && pictureSize != null) {
+				if (size != null) {
 					parameters.setPreviewSize(size.width, size.height);
-					parameters.setPictureSize(pictureSize.width,
-							pictureSize.height);
-					parameters.setPictureFormat(ImageFormat.JPEG);
-					parameters.setPreviewFormat(ImageFormat.RGB_565);
-
-					/* camera.setPreviewDisplay(MainActivity.surfaceHolder); */
+					parameters.setPreviewFpsRange(5, 15);
 
 					parameters.setJpegQuality(30);
+					
 
 					camera.setParameters(parameters);
-					camera.setDisplayOrientation(90);
+					// camera.setDisplayOrientation(90);
 					cameraConfigured = true;
 				}
 			}
@@ -201,7 +161,7 @@ public class MJPGStreamer {
 
 		public void surfaceChanged(SurfaceHolder holder, int format, int width,
 				int height) {
-			initPreview(width, height);
+			initPreview(320, 240);
 			startPreview();
 		}
 
@@ -221,8 +181,6 @@ public class MJPGStreamer {
 	}
 
 	public synchronized void stop() {
-		if (camera != null)
-			camera.release();
 		// Start the thread to listen on a BluetoothServerSocket
 		if (mMJPGThread != null) {
 			mMJPGThread.cancel();
@@ -257,18 +215,15 @@ public class MJPGStreamer {
 		@Override
 		public void onPreviewFrame(byte[] data, Camera camera) {
 			// TODO Auto-generated method stub
-			
-			Size previewSize = camera.getParameters().getPreviewSize(); 
-			YuvImage yuvimage=new YuvImage(data, ImageFormat.NV21, previewSize.width, previewSize.height, null);
+
+			Size previewSize = camera.getParameters().getPreviewSize();
+			YuvImage yuvimage = new YuvImage(data, ImageFormat.NV21,
+					previewSize.width, previewSize.height, null);
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			yuvimage.compressToJpeg(new Rect(0, 0, previewSize.width, previewSize.height), 50, baos);
+			yuvimage.compressToJpeg(new Rect(0, 0, previewSize.width,
+					previewSize.height), 30, baos);
 			baos.toByteArray();
 
-			/*ByteArrayOutputStream stream = new ByteArrayOutputStream();
-			
-			photo.compress(Bitmap.CompressFormat.JPEG, 30, stream);
-
-			//lastPicture = new byte[stream.toByteArray().length];*/
 			lastPicture = baos.toByteArray();
 		}
 	};
@@ -285,10 +240,11 @@ public class MJPGStreamer {
 	private class AcceptThread extends Thread {
 
 		public void run() {
-			try {
-				Log.d(TAG, "mMJPGThread running");
 
-				while (!ss.isClosed()) {
+			Log.d(TAG, "mMJPGThread running");
+
+			while (this.isAlive()) {
+				try {
 					if (s != null) {
 						s.close();
 					}
@@ -316,74 +272,48 @@ public class MJPGStreamer {
 							+ "Cache-Control: no-store\r\n"
 							+ "Pragma: no-cache\r\n" + "Connection: close\r\n"
 							+ "\r\n").getBytes());
-					isLoad = true;
 
 					camera.setPreviewCallback(JPGPrewCallback);
 
 					while (!s.isOutputShutdown()) {
 
-						// View rv = surfaceView;
-						/*
-						 * Bitmap photo =
-						 * Bitmap.createBitmap(surfaceView.getWidth(),
-						 * surfaceView.getHeight(), Bitmap.Config.ARGB_8888);;
-						 * 
-						 * Canvas c = new Canvas(photo); surfaceView.draw(c);
-						 * 
-						 * /*rv.setDrawingCacheEnabled(true); photo =
-						 * Bitmap.createBitmap(rv.getDrawingCache());
-						 * rv.setDrawingCacheEnabled(false);
-						 * 
-						 * ByteArrayOutputStream stream = new
-						 * ByteArrayOutputStream();
-						 * 
-						 * photo.compress(Bitmap.CompressFormat.JPEG, 10,
-						 * stream);
-						 * 
-						 * lastPicture = new byte[stream.toByteArray().length];
-						 * lastPicture = stream.toByteArray();
-						 */
-						if (lastPicture != null) {
-							String outBuf = "--b\r\n"
-									+ "Content-Type: image/jpeg\r\n"
-									+ "Content-length: " + lastPicture.length
-									+ "\r\n\r\n";
-							// Log.d(TAG, "send: " + outBuf);
-							out.write(outBuf.getBytes());
+						try {
+							if (lastPicture != null) {
+								String outBuf = "--b\r\n"
+										+ "Content-Type: image/jpeg\r\n"
+										+ "Content-length: "
+										+ lastPicture.length + "\r\n\r\n";
+								// Log.d(TAG, "send: " + outBuf);
+								out.write(outBuf.getBytes());
 
-							out.write(lastPicture);
-							out.write("\r\n\r\n".getBytes());
-							out.flush();
-						} else {
-							if (D)
-								Log.d(TAG, "Nothing to send");
+								out.write(lastPicture);
+								out.write("\r\n\r\n".getBytes());
+								out.flush();
+							} else {
+								if (D)
+									Log.d(TAG, "Nothing to send");
+							}
+
+							SystemClock.sleep(40);
+						} catch (IOException e) {
+							e.printStackTrace();
+							break;
+
 						}
-
-						/*
-						 * if (isLoad) { camera.takePicture(null, null,
-						 * JPGCallback); isLoad = false; } if (lastPicture !=
-						 * null) {
-						 * 
-						 * 
-						 * 
-						 * } else {
-						 * 
-						 * if (D) Log.d(TAG, "Nothing to send"); }
-						 */
-						SystemClock.sleep(50);
 					}
 
 					if (D)
 						Log.d(TAG, "Disconect");
 
+				} catch (IOException e) {
+					cancel();
+					e.printStackTrace();
+				} catch (Exception e) {
+					e.printStackTrace();
+					cancel();
+					mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
 				}
-			} catch (IOException e) {
-				cancel();
-				e.printStackTrace();
-			} catch (Exception e) {
-				e.printStackTrace();
-				cancel();
-				mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
+
 			}
 
 		}
@@ -394,7 +324,6 @@ public class MJPGStreamer {
 					Log.d(TAG, "Try stop mMJPGThread");
 				try {
 					if (camera != null)
-						camera.release();
 					s.close();
 					ss.close();
 				} catch (Exception e) {

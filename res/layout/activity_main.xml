@@ -12,4 +12,22 @@
         android:layout_height="fill_parent"
         android:minHeight="150dp" />
 
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:gravity="right"
+        android:includeFontPadding="false"
+        android:paddingRight="10dp"
+        android:scrollHorizontally="false"
+        android:selectAllOnFocus="false"
+        android:shadowColor="@android:color/white"
+        android:shadowRadius="2"
+        android:text="192.168.0.1:8080"
+        android:textAllCaps="false"
+        android:textSize="20sp"
+        android:width="250dp" />
+
 </RelativeLayout>

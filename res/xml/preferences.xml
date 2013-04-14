@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <PreferenceCategory android:title="@string/settings_camera" >
+        <EditTextPreference
+            android:defaultValue="50"
+            android:key="camera_quality"
+            android:maxLength="2"
+            android:numeric="integer"
+            android:summary="@string/settings_camera_quality"
+            android:title="@string/settings_camera_quality" />
+
+        <ListPreference
+            android:defaultValue="2"
+            android:entries="@array/picturesize_names"
+            android:entryValues="@array/picturesize_values"
+            android:key="camera_size"
+            android:summary="@string/settings_camera_quality_summary"
+            android:title="@string/settings_camera_quality" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/settings_network" >
+        <EditTextPreference
+            android:defaultValue="8080"
+            android:key="network_frontend_port"
+            android:maxLength="4"
+            android:numeric="integer"
+            android:title="@string/settings_network_frontend_port" />
+        <EditTextPreference
+            android:defaultValue="8081"
+            android:key="network_video_port"
+            android:maxLength="4"
+            android:numeric="integer"
+            android:title="@string/settings_network_video_port" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

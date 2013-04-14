@@ -10,21 +10,17 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View.OnClickListener;
-import android.content.pm.PackageManager;
-import android.content.Context;
+import android.view.Window;
+import android.view.WindowManager;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
 
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
+	//
 	private TextView textDisplay;
 
 	private httpService mHttpService = null;
@@ -32,8 +28,9 @@ public class MainActivity extends Activity {
 	private MJPGStreamer mJPEGStreamer = null;
 
 	public static final int CAMERA_FOUND = 0;
-
 	public static final int CAMERA_NOT_FOUND = 1;
+	public static final int LOCAL_IP = 2;
+	public static final int NOT_CONNECTED = 3;
 
 	public SurfaceView surfaceView;
 
@@ -44,22 +41,24 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		// Init layout
+
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+				WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
 		setContentView(R.layout.activity_main);
 
-		/*textDisplay = (TextView) this.findViewById(R.id.editText1);
-		textDisplay.setText("");*/
+		textDisplay = (TextView) this.findViewById(R.id.textView1);
 
 		// Init http server
 
 		surfaceView = (SurfaceView) findViewById(R.id.surfaceView1);
-		
 
 		surfaceView.setDrawingCacheEnabled(true);
 
 		mHttpService = new httpService(this, mHandler);
 
-		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler, surfaceView,
-				getWindow().getDecorView().getRootView());
+		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler, surfaceView);
 
 	}
 
@@ -85,8 +84,18 @@ public class MainActivity extends Activity {
 	private final Handler mHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
-			Log.i("Handler", "MESSAGE: " + msg.arg1);
+			Log.i("Handler", "MESSAGE: " + msg.what);
+
+			switch (msg.what) {
+			case LOCAL_IP:
+				textDisplay.setText(msg.getData().getString("0"));
+				break;
+
+			case NOT_CONNECTED:
+				textDisplay.setText("Сервер не запущен");
+				break;
 			// textDisplay.append(msg.arg1);
+			}
 		}
 	};
 
@@ -95,10 +104,12 @@ public class MainActivity extends Activity {
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 			case CAMERA_FOUND:
+				// textDisplay.setText("Камера найдена");
 				Toast.makeText(getApplicationContext(), "Камера найдена",
 						Toast.LENGTH_LONG).show();
 				break;
 			case CAMERA_NOT_FOUND:
+				// textDisplay.setText("Камера не найдена");
 				Toast.makeText(getApplicationContext(), "Камера не найдена",
 						Toast.LENGTH_LONG).show();
 				break;
@@ -118,8 +129,10 @@ public class MainActivity extends Activity {
 
 	@Override
 	protected void onDestroy() {
-		if (mJPEGStreamer != null)
+		if (mJPEGStreamer != null) {
 			mJPEGStreamer.stop();
+			mJPEGStreamer.camera.release();
+		}
 		if (mHttpService != null)
 			mHttpService.stop();
 		super.onDestroy();
@@ -139,21 +152,18 @@ public class MainActivity extends Activity {
 		case R.id.action_startServer:
 			if (!mHttpService.isEnabled) {
 				mHttpService.start();
+				mJPEGStreamer.start();
 				item.setTitle(R.string.stop_server);
 			} else {
 				mHttpService.stop();
+				mJPEGStreamer.stop();
 				item.setTitle(R.string.start_server);
 			}
 			return true;
-		case R.id.action_startStream:
-
-			if (!mJPEGStreamer.isEnabled) {
-				mJPEGStreamer.start();
-				item.setTitle(R.string.stop_stream);
-			} else {
-				mJPEGStreamer.stop();
-				item.setTitle(R.string.start_stream);
-			}
+		case R.id.action_settings:
+			Intent settingsActivity = new Intent(getBaseContext(),
+					SettingsActivity.class);
+			startActivity(settingsActivity);
 			return true;
 		}
 		return false;
