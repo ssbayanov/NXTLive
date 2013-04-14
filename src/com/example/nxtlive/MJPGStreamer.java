@@ -134,10 +134,9 @@ public class MJPGStreamer {
 
 				if (size != null) {
 					parameters.setPreviewSize(size.width, size.height);
-					parameters.setPreviewFpsRange(5, 15);
+					//parameters.setPreviewFpsRange(5, 15);
 
 					parameters.setJpegQuality(30);
-					
 
 					camera.setParameters(parameters);
 					// camera.setDisplayOrientation(90);
@@ -161,7 +160,7 @@ public class MJPGStreamer {
 
 		public void surfaceChanged(SurfaceHolder holder, int format, int width,
 				int height) {
-			initPreview(320, 240);
+			initPreview(width, height);
 			startPreview();
 		}
 
@@ -306,12 +305,16 @@ public class MJPGStreamer {
 						Log.d(TAG, "Disconect");
 
 				} catch (IOException e) {
-					cancel();
 					e.printStackTrace();
+					cancel();
+					break;
+
 				} catch (Exception e) {
 					e.printStackTrace();
-					cancel();
 					mHandler.obtainMessage(MainActivity.CAMERA_NOT_FOUND);
+					cancel();
+					break;
+
 				}
 
 			}
@@ -324,7 +327,7 @@ public class MJPGStreamer {
 					Log.d(TAG, "Try stop mMJPGThread");
 				try {
 					if (camera != null)
-					s.close();
+						s.close();
 					ss.close();
 				} catch (Exception e) {
 					e.printStackTrace();

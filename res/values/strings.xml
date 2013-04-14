@@ -4,6 +4,7 @@
     <!-- Global strings -->
 
     <string name="app_name">NXTLive</string>
+    <string name="bt_not_supported">Bluetooth недоступен</string>
 
     <!-- Menu strings -->
 

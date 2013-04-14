@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
@@ -32,9 +33,13 @@ public class MainActivity extends Activity {
 	public static final int LOCAL_IP = 2;
 	public static final int NOT_CONNECTED = 3;
 
+	private static final int REQUEST_CONNECT_DEVICE_SECURE = 0;
+
 	public SurfaceView surfaceView;
 
 	public static SurfaceHolder surfaceHolder;
+
+	private BluetoothAdapter mBluetoothAdapter = null;
 
 	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	@Override
@@ -131,7 +136,8 @@ public class MainActivity extends Activity {
 	protected void onDestroy() {
 		if (mJPEGStreamer != null) {
 			mJPEGStreamer.stop();
-			mJPEGStreamer.camera.release();
+			if (mJPEGStreamer.camera != null)
+				mJPEGStreamer.camera.release();
 		}
 		if (mHttpService != null)
 			mHttpService.stop();
@@ -164,6 +170,30 @@ public class MainActivity extends Activity {
 			Intent settingsActivity = new Intent(getBaseContext(),
 					SettingsActivity.class);
 			startActivity(settingsActivity);
+			return true;
+		case R.id.action_connect:
+
+			mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+			// If the adapter is null, then Bluetooth is not supported
+			if (mBluetoothAdapter == null) {
+				Toast.makeText(this, R.string.bt_not_supported,
+						Toast.LENGTH_LONG).show();
+				finish();
+				return false;
+			}
+
+			// Check enabled Bluetooth adapter
+			if (!mBluetoothAdapter.isEnabled()) {
+				Intent enableIntent = new Intent(
+						BluetoothAdapter.ACTION_REQUEST_ENABLE);
+				startActivityForResult(enableIntent,
+						httpService.REQUEST_ENABLE_BT);
+			}
+
+			Intent serverIntent = null;
+			serverIntent = new Intent(this, DeviceListActivity.class);
+			startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
 			return true;
 		}
 		return false;

@@ -35,7 +35,7 @@ public class httpService {
 	// Intent request codes
 	private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
 	private static final int REQUEST_DISCONNECT_DEVICE = 2;
-	private static final int REQUEST_ENABLE_BT = 3;
+	static final int REQUEST_ENABLE_BT = 3;
 
 	// Message types sent from the BluetoothChatService Handler
 	public static final int MESSAGE_STATE_CHANGE = 1;
@@ -102,36 +102,41 @@ public class httpService {
 		}
 	}
 
-    public static String getIPAddress(boolean useIPv4) {
-        try {
-            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-            for (NetworkInterface intf : interfaces) {
-                List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
-                for (InetAddress addr : addrs) {
-                    if (!addr.isLoopbackAddress()) {
-                        String sAddr = addr.getHostAddress().toUpperCase();
-                        boolean isIPv4 = InetAddressUtils.isIPv4Address(sAddr); 
-                        if (useIPv4) {
-                            if (isIPv4) 
-                                return sAddr;
-                        } else {
-                            if (!isIPv4) {
-                                int delim = sAddr.indexOf('%'); // drop ip6 port suffix
-                                return delim<0 ? sAddr : sAddr.substring(0, delim);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception ex) { } // for now eat exceptions
-        return "";
-    }
-    
+	public static String getIPAddress(boolean useIPv4) {
+		try {
+			List<NetworkInterface> interfaces = Collections
+					.list(NetworkInterface.getNetworkInterfaces());
+			for (NetworkInterface intf : interfaces) {
+				List<InetAddress> addrs = Collections.list(intf
+						.getInetAddresses());
+				for (InetAddress addr : addrs) {
+					if (!addr.isLoopbackAddress()) {
+						String sAddr = addr.getHostAddress().toUpperCase();
+						boolean isIPv4 = InetAddressUtils.isIPv4Address(sAddr);
+						if (useIPv4) {
+							if (isIPv4)
+								return sAddr;
+						} else {
+							if (!isIPv4) {
+								int delim = sAddr.indexOf('%'); // drop ip6 port
+																// suffix
+								return delim < 0 ? sAddr : sAddr.substring(0,
+										delim);
+							}
+						}
+					}
+				}
+			}
+		} catch (Exception ex) {
+		} // for now eat exceptions
+		return "";
+	}
+
 	public void getIp() {
 		if (ss != null) {
 			Message msg = mHandler.obtainMessage(MainActivity.LOCAL_IP);
 			Bundle bundle = new Bundle();
-				bundle.putString("0",getIPAddress(true) + ":" + ss.getLocalPort());
+			bundle.putString("0", getIPAddress(true) + ":" + ss.getLocalPort());
 			msg.setData(bundle);
 			mHandler.sendMessage(msg);
 		} else
@@ -148,9 +153,10 @@ public class httpService {
 					if (s != null) {
 						s.close();
 					}
+					
 					getIp();
 					s = ss.accept(); // wait new connection
-					
+
 					getIp();
 					if (D)
 						Log.d(TAG, "Try create mHttpThread");
@@ -167,25 +173,51 @@ public class httpService {
 
 					String query = new String(buffer); // query need for parsing
 
-					// Log.i("TcpServer", "received: " + query);
+					String[] tok = query.split("[ \r\n][ \r\n]*");
 
-					out.write(("HTTP/1.0 200 Ok\r\n" + "Pragma: no-cache\r\n"
-							+ "Expires: Thu, 01 Jan 1970 00:00:01 GMT\r\n"
-							+ "Content-Type: text/html; charset=\"utf-8\""
-							+ "\r\n\r\n").getBytes());
+					if (D)
+						Log.d(TAG, "Get query: " + query);
 
-					AssetManager am = mainContext.getAssets();
+					if (tok.length > 1 && D) {
+						Log.d(TAG, "query page: \""+tok[1]+"\"");
+						// Log.i("TcpServer", "received: " + query);
 
-					InputStream input = am.open("index.html"); // open file
+						out.write(("HTTP/1.0 200 Ok\r\n"
+								+ "Pragma: no-cache\r\n"
+								+ "Expires: Thu, 01 Jan 1970 00:00:01 GMT\r\n"
+								+ "Content-Type: text/html; charset=\"utf-8\""
+								+ "\r\n\r\n").getBytes());
 
-					size = input.available(); // get size file
-					buffer = new byte[size];
-					input.read(buffer);
-					input.close();
+						AssetManager am = mainContext.getAssets();
 
-					out.write(buffer);
+						InputStream input = null;
+						if (tok[1].equals("/") || tok[1].equals("/index.html")) {
+							input = am.open("index.html"); // open file
+							Log.d(TAG, "sending page: index.html");
+						} else if (tok[1].equals("/controll.html")) {
+							input = am.open("controll.html"); // open file
+						} else if (tok[1].equals("/video.html")) {
+							input = am.open("video.html"); // open file
+						} else {
+							input = am.open("404.html"); // open file
+						}
 
-					out.flush();
+						size = input.available(); // get size file
+						buffer = new byte[size];
+						input.read(buffer);
+						input.close();
+						
+						String page = new String(buffer);
+						page = page.replace("%ip%", getIPAddress(true));
+						page = page.replace("%port%", ""+ss.getLocalPort());
+						page = page.replace("%vport%", ""+(ss.getLocalPort()+1));
+
+						out.write(page.getBytes());
+
+						out.flush();
+					}
+					else
+						Log.d(TAG, "Empty query page");
 
 				}
 			} catch (IOException e) {

@@ -1,0 +1,37 @@
+﻿<html>
+	<head>
+		<title>Панель управления NXTLive. Управление</title>
+		<script type="text/javascript">
+			var count;
+			function send(p){
+				document.getElementById("sender").src = p;	
+			}
+
+			function keyDown(e) {
+				count++;
+				var keycode = e.keyCode?e.keyCode:e.keyChar;//теперь в keycode код клавиши, и с ним можно делать все что угодно
+				document.getElementById("keycode").value = keycode;
+				document.getElementById("count").value = count;
+				return false;
+			}
+		</script>
+		<style>
+			input {width:30;height:24;}
+			div {text-align: center}
+		</style>
+	</head>
+	<body style="background-color: #ddd; font-family: Helvetica, Arial, sans-serif;">
+		<h3>Панель управления NXTLive</h3><br>
+		<a href="/">На главную</a><br>
+		<img src="htpp://%ip%:%vport%" alt="Video feed"><br>
+		<div>
+			<input type="button" value="/\" onMouseDown="send(1)" onMouseUp="send(0)">
+		</div>
+		<div>
+			<input type="button" value="<" onMouseDown="send(2)" onMouseUp="send(0)">
+			<input type="button" value="\/" onMouseDown="send(3)" onMouseUp="send(0)">
+			<input type="button" value=">" onMouseDown="send(4)" onMouseUp="send(0)">
+			<input type="text" id="count" size="40"><input type="text" id="keycode" size="40">
+		</div>
+	</body>
+</html>

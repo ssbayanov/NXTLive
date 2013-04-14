@@ -51,34 +51,35 @@ public final class R {
     public static final class string {
         /**  Menu strings 
          */
-        public static final int action_settings=0x7f070001;
+        public static final int action_settings=0x7f070002;
         /**  Global strings 
          */
         public static final int app_name=0x7f070000;
-        public static final int button_scan=0x7f070013;
-        public static final int connect=0x7f070004;
-        public static final int connected_devices=0x7f070014;
-        public static final int descovered_devices=0x7f070015;
-        public static final int hello_world=0x7f07000e;
-        public static final int none_found=0x7f070012;
-        public static final int none_paired=0x7f070011;
+        public static final int bt_not_supported=0x7f070001;
+        public static final int button_scan=0x7f070014;
+        public static final int connect=0x7f070005;
+        public static final int connected_devices=0x7f070015;
+        public static final int descovered_devices=0x7f070016;
+        public static final int hello_world=0x7f07000f;
+        public static final int none_found=0x7f070013;
+        public static final int none_paired=0x7f070012;
         /**  DeviceListActivity 
          */
-        public static final int scanning=0x7f07000f;
-        public static final int select_device=0x7f070010;
+        public static final int scanning=0x7f070010;
+        public static final int select_device=0x7f070011;
         /**  Settings strings 
          */
-        public static final int settings_camera=0x7f070005;
-        public static final int settings_camera_quality=0x7f070006;
-        public static final int settings_camera_quality_summary=0x7f070007;
-        public static final int settings_camera_size=0x7f070008;
-        public static final int settings_camera_size_summary=0x7f070009;
-        public static final int settings_network=0x7f07000a;
-        public static final int settings_network_frontend_port=0x7f07000b;
-        public static final int settings_network_video_port=0x7f07000c;
-        public static final int start_server=0x7f070002;
-        public static final int stop_server=0x7f070003;
-        public static final int title_activity_device_list=0x7f07000d;
+        public static final int settings_camera=0x7f070006;
+        public static final int settings_camera_quality=0x7f070007;
+        public static final int settings_camera_quality_summary=0x7f070008;
+        public static final int settings_camera_size=0x7f070009;
+        public static final int settings_camera_size_summary=0x7f07000a;
+        public static final int settings_network=0x7f07000b;
+        public static final int settings_network_frontend_port=0x7f07000c;
+        public static final int settings_network_video_port=0x7f07000d;
+        public static final int start_server=0x7f070003;
+        public static final int stop_server=0x7f070004;
+        public static final int title_activity_device_list=0x7f07000e;
     }
     public static final class style {
         /** 
