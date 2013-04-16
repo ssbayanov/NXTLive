@@ -326,7 +326,7 @@ public class MJPGStreamer {
 				if (D)
 					Log.d(TAG, "Try stop mMJPGThread");
 				try {
-					if (camera != null)
+					if (s != null)
 						s.close();
 					ss.close();
 				} catch (Exception e) {

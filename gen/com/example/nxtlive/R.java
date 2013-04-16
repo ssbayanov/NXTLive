@@ -28,14 +28,15 @@ public final class R {
         public static final int ic_launcher=0x7f020000;
     }
     public static final class id {
-        public static final int action_connect=0x7f0a0009;
-        public static final int action_settings=0x7f0a0007;
-        public static final int action_startServer=0x7f0a0008;
+        public static final int action_connect=0x7f0a000a;
+        public static final int action_settings=0x7f0a0008;
+        public static final int action_startServer=0x7f0a0009;
         public static final int button_scan=0x7f0a0004;
+        public static final int device_name=0x7f0a0007;
+        public static final int http_status=0x7f0a0006;
         public static final int new_devices=0x7f0a0003;
         public static final int paired_devices=0x7f0a0001;
         public static final int surfaceView1=0x7f0a0005;
-        public static final int textView1=0x7f0a0006;
         public static final int title_new_devices=0x7f0a0002;
         public static final int title_paired_devices=0x7f0a0000;
     }

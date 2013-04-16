@@ -21,47 +21,73 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 
-	//
-	private TextView textDisplay;
+	// constant for debugging
+	private static final String TAG = "MainActivity";
+	private static final boolean D = true;
 
-	private httpService mHttpService = null;
+	// variables for bluetooth
 
-	private MJPGStreamer mJPEGStreamer = null;
+	private String mConnectedDeviceName = null;
 
+	// Codes of MJPGStreamer handle
 	public static final int CAMERA_FOUND = 0;
 	public static final int CAMERA_NOT_FOUND = 1;
-	public static final int LOCAL_IP = 2;
-	public static final int NOT_CONNECTED = 3;
 
-	private static final int REQUEST_CONNECT_DEVICE_SECURE = 0;
+	// Codes of HttpService handle
+
+	public static final int LOCAL_IP = 1;
+	public static final int NOT_CONNECTED = 2;
+	public static final int BT_SERVICE_MESSAGE = 3;
+
+	// Codes of BluetoothService handle
+	public static final int SET_NAME = 1;
+	
+	public static final int BT_NOT_ENABLED = 2;
+
+	// interface variables
+	private TextView httpStatus;
+
+	private TextView deviceName;
+
+	private HttpService mHttpService = null;
+
+	private MJPGStreamer mJPEGStreamer = null;
 
 	public SurfaceView surfaceView;
 
 	public static SurfaceHolder surfaceHolder;
 
-	private BluetoothAdapter mBluetoothAdapter = null;
+	private MenuItem btConnect;
+
+	public static final int REQUEST_CONNECT_DEVICE = 1;
+	public static final int REQUEST_DISCONNECT_DEVICE = 2;
+	static final int REQUEST_ENABLE_BT = 3;
 
 	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		// Init layout
 
+		// Initialize interface
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 				WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 		setContentView(R.layout.activity_main);
 
-		textDisplay = (TextView) this.findViewById(R.id.textView1);
+		httpStatus = (TextView) this.findViewById(R.id.http_status);
 
-		// Init http server
+		deviceName = (TextView) this.findViewById(R.id.device_name);
+
+		btConnect = (MenuItem) this.findViewById(R.id.action_connect);
+
+		// Initialize http server
 
 		surfaceView = (SurfaceView) findViewById(R.id.surfaceView1);
 
 		surfaceView.setDrawingCacheEnabled(true);
 
-		mHttpService = new httpService(this, mHandler);
+		mHttpService = new HttpService(this, mHttpServiceHandler);
 
 		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler, surfaceView);
 
@@ -80,26 +106,38 @@ public class MainActivity extends Activity {
 
 	}
 
-	public void showIp(String text) {
+	public void setHttpStatus(String text) {
 
-		textDisplay.setText(text);
+		httpStatus.setText(text);
 
 	}
 
-	private final Handler mHandler = new Handler() {
+	private final Handler mHttpServiceHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			Log.i("Handler", "MESSAGE: " + msg.what);
 
 			switch (msg.what) {
+			case BT_SERVICE_MESSAGE:
+
+				switch (msg.arg1) {
+				case SET_NAME:
+					deviceName.setText(msg.getData().getString(
+							BluetoothService.DEVICE_NAME));
+					break;
+				case BT_NOT_ENABLED:
+					btConnect.setEnabled(false);
+					break;
+				}
+				break;
 			case LOCAL_IP:
-				textDisplay.setText(msg.getData().getString("0"));
+				setHttpStatus(msg.getData().getString("0"));
 				break;
 
 			case NOT_CONNECTED:
-				textDisplay.setText("Сервер не запущен");
+				setHttpStatus("Сервер не запущен");
 				break;
-			// textDisplay.append(msg.arg1);
+
 			}
 		}
 	};
@@ -109,14 +147,68 @@ public class MainActivity extends Activity {
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
 			case CAMERA_FOUND:
-				// textDisplay.setText("Камера найдена");
 				Toast.makeText(getApplicationContext(), "Камера найдена",
 						Toast.LENGTH_LONG).show();
 				break;
 			case CAMERA_NOT_FOUND:
-				// textDisplay.setText("Камера не найдена");
 				Toast.makeText(getApplicationContext(), "Камера не найдена",
 						Toast.LENGTH_LONG).show();
+				break;
+			}
+		}
+	};
+
+	private final Handler mBleutoothServiceHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			switch (msg.what) {
+			case BluetoothService.MESSAGE_STATE_CHANGE:
+				if (D)
+					Log.i("Handler", "MESSAGE_STATE_CHANGE: " + msg.arg1);
+				switch (msg.arg1) {
+				case BluetoothService.STATE_CONNECTED:
+					// setStatus(getString(R.string.title_connected_to,
+					// mConnectedDeviceName));
+					// mConversationArrayAdapter.clear();
+					break;
+				case BluetoothService.STATE_CONNECTING:
+					// setStatus(R.string.title_connecting);
+					break;
+				case BluetoothService.STATE_LISTEN:
+				case BluetoothService.STATE_NONE:
+					// setStatus(R.string.title_not_connected);
+					break;
+				}
+				break;
+			case BluetoothService.MESSAGE_WRITE:
+				// byte[] writeBuf = (byte[]) msg.obj;
+				// construct a string from the buffer
+				// String writeMessage = new String(writeBuf);
+				// mConversationArrayAdapter.add("Me:  " + writeMessage);
+				break;
+			case BluetoothService.MESSAGE_READ:
+				/*
+				 * byte[] readBuf = (byte[]) msg.obj; short i = (short) (0x0000
+				 * + (readBuf[1] << 8) + readBuf[0]+32767);
+				 */
+
+				// construct a string from the valid bytes in the buffer
+				// String readMessage = new String(readBuf, 0, msg.arg1);
+				// mConversationArrayAdapter.add(mConnectedDeviceName+":  " +
+				// readMessage);
+				break;
+			case BluetoothService.MESSAGE_DEVICE_NAME:
+				// save the connected device's name
+				mConnectedDeviceName = msg.getData().getString(
+						BluetoothService.DEVICE_NAME);
+				Toast.makeText(getApplicationContext(),
+						"Connected to " + mConnectedDeviceName,
+						Toast.LENGTH_SHORT).show();
+				break;
+			case BluetoothService.MESSAGE_TOAST:
+				Toast.makeText(getApplicationContext(),
+						msg.getData().getString(BluetoothService.TOAST),
+						Toast.LENGTH_SHORT).show();
 				break;
 			}
 		}
@@ -152,6 +244,44 @@ public class MainActivity extends Activity {
 
 	}
 
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if (D)
+			Log.d("onActivityResult", "onActivityResult " + resultCode);
+		switch (requestCode) {
+		case REQUEST_CONNECT_DEVICE:
+			// When DeviceListActivity returns with a device to connect
+			if (resultCode == Activity.RESULT_OK) {
+				mHttpService.mBTService.connectDevice(data);
+			}
+			break;
+		case REQUEST_DISCONNECT_DEVICE:
+			// When DeviceListActivity returns with a device to connect
+			if (resultCode == Activity.RESULT_OK) {
+				// connectDevice(data, false);
+			}
+			break;
+		case REQUEST_ENABLE_BT:
+			// When the request to enable Bluetooth returns
+			if (resultCode == Activity.RESULT_OK) {
+				// Bluetooth is now enabled, so set up a BT session
+				// setupProgram();
+				startScan();
+			} else {
+				// User did not enable Bluetooth or an error occurred
+				Log.d("onActivityResult", "BT not enabled");
+				this.findViewById(R.id.action_connect).setEnabled(false);
+			}
+		}
+	}
+
+	private void startScan() {
+
+		Intent serverIntent = null;
+		serverIntent = new Intent(this, DeviceListActivity.class);
+		startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE);
+
+	}
+
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
@@ -173,27 +303,14 @@ public class MainActivity extends Activity {
 			return true;
 		case R.id.action_connect:
 
-			mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-			// If the adapter is null, then Bluetooth is not supported
-			if (mBluetoothAdapter == null) {
-				Toast.makeText(this, R.string.bt_not_supported,
-						Toast.LENGTH_LONG).show();
-				finish();
-				return false;
-			}
-
 			// Check enabled Bluetooth adapter
-			if (!mBluetoothAdapter.isEnabled()) {
+			if (!mHttpService.mBTService.mBluetoothAdapter.isEnabled()) {
 				Intent enableIntent = new Intent(
 						BluetoothAdapter.ACTION_REQUEST_ENABLE);
-				startActivityForResult(enableIntent,
-						httpService.REQUEST_ENABLE_BT);
-			}
+				startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+			} else
+				startScan();
 
-			Intent serverIntent = null;
-			serverIntent = new Intent(this, DeviceListActivity.class);
-			startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
 			return true;
 		}
 		return false;

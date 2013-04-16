@@ -7,10 +7,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
 
 import org.apache.http.conn.util.InetAddressUtils;
@@ -24,25 +21,12 @@ import android.os.Message;
 import android.text.format.Formatter;
 import android.util.Log;
 
-public class httpService {
+public class HttpService {
 	// Name of the connected device
 	private String mConnectedDeviceName = null;
 
 	public static final String DEVICE_NAME = "device_name";
 	public static final String TOAST = "toast";
-	private BluetoothAdapter mBluetoothAdapter = null;
-
-	// Intent request codes
-	private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
-	private static final int REQUEST_DISCONNECT_DEVICE = 2;
-	static final int REQUEST_ENABLE_BT = 3;
-
-	// Message types sent from the BluetoothChatService Handler
-	public static final int MESSAGE_STATE_CHANGE = 1;
-	public static final int MESSAGE_READ = 2;
-	public static final int MESSAGE_WRITE = 3;
-	public static final int MESSAGE_DEVICE_NAME = 4;
-	public static final int MESSAGE_TOAST = 5;
 
 	private static final String TAG = "httpService";
 
@@ -62,10 +46,16 @@ public class httpService {
 	OutputStream out = null;
 	ServerSocket ss = null;
 	Socket s = null;
+	
+	BluetoothService mBTService;
 
-	public httpService(Context context, Handler handler) {
+	
+	
+	public HttpService(Context context, Handler handler) {
 		mainContext = context;
 		mHandler = handler;
+		
+		mBTService = new BluetoothService(context, mHandler);
 
 		try {
 			Log.d(TAG, "Try run mHttpService");
@@ -79,7 +69,10 @@ public class httpService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
 		getIp();
+		
+		
 
 	}
 

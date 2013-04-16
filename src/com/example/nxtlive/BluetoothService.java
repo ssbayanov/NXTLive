@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -34,18 +35,31 @@ public class BluetoothService {
         UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     // Member fields
-    private final BluetoothAdapter mAdapter;
+	private String mConnectedDeviceName = null;
+	public BluetoothAdapter mBluetoothAdapter = null;
     private final Handler mHandler;
     private AcceptThread mSecureAcceptThread;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
     private int mState;
+    
+	public static final String DEVICE_NAME = "device_name";
+	public static final String TOAST = "toast";
+    
+	// Message types sent from the BluetoothChatService Handler
+	public static final int MESSAGE_STATE_CHANGE = 1;
+	public static final int MESSAGE_READ = 2;
+	public static final int MESSAGE_WRITE = 3;
+	public static final int MESSAGE_DEVICE_NAME = 4;
+	public static final int MESSAGE_TOAST = 5;
 
     // Constants that indicate the current connection state
     public static final int STATE_NONE = 0;       // we're doing nothing
     public static final int STATE_LISTEN = 1;     // now listening for incoming connections
     public static final int STATE_CONNECTING = 2; // now initiating an outgoing connection
     public static final int STATE_CONNECTED = 3;  // now connected to a remote device
+    
+
 
     /**
      * Constructor. Prepares a new BluetoothChat session.
@@ -53,10 +67,20 @@ public class BluetoothService {
      * @param handler  A Handler to send messages back to the UI Activity
      */
     public BluetoothService(Context context, Handler handler) {
-        mAdapter = BluetoothAdapter.getDefaultAdapter();
         
         mState = STATE_NONE;
         mHandler = handler;
+        
+		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+		// If the adapter is null, then Bluetooth is not supported
+		if (mBluetoothAdapter == null) {
+			mHandler.obtainMessage(MainActivity.BT_SERVICE_MESSAGE, MainActivity.BT_NOT_ENABLED).sendToTarget();
+			if (D) {
+				Log.i(TAG, "Bluetooth not supported");
+
+			}
+		}
     }
 
     /**
@@ -68,8 +92,26 @@ public class BluetoothService {
         mState = state;
 
         // Give the new state to the Handler so the UI Activity can update
-        mHandler.obtainMessage(httpService.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
+        mHandler.obtainMessage(MainActivity.BT_SERVICE_MESSAGE, MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
     }
+    
+	public void connectDevice(Intent data) {
+		// Get the device MAC address
+		String address = data.getExtras().getString(
+				DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+		// Get the BluetoothDevice object
+		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+
+		mConnectedDeviceName = device.getName();
+		Message msg = mHandler.obtainMessage(MainActivity.BT_SERVICE_MESSAGE);
+		Bundle bundle = new Bundle();
+		bundle.putString("DEVICE_NAME", device.getName());
+		msg.setData(bundle);
+		mHandler.sendMessage(msg);
+		// Attempt to connect to the device
+
+		connect(device);
+	}
 
     /**
      * Return the current connection state. */
@@ -103,7 +145,7 @@ public class BluetoothService {
      * @param device  The BluetoothDevice to connect
      * @param secure Socket Security type - Secure (true) , Insecure (false)
      */
-    public synchronized void connect(BluetoothDevice device, boolean secure) {
+    public synchronized void connect(BluetoothDevice device) {
         if (D) Log.d(TAG, "connect to: " + device);
         
         // Cancel any thread attempting to make a connection
@@ -147,9 +189,9 @@ public class BluetoothService {
         mConnectedThread.start();
 
         // Send the name of the connected device back to the UI Activity
-        Message msg = mHandler.obtainMessage(httpService.MESSAGE_DEVICE_NAME);
+        Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_NAME);
         Bundle bundle = new Bundle();
-        bundle.putString(httpService.DEVICE_NAME, device.getName());
+        bundle.putString(DEVICE_NAME, device.getName());
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -203,9 +245,9 @@ public class BluetoothService {
      */
     private void connectionFailed() {
         // Send a failure message back to the Activity
-        Message msg = mHandler.obtainMessage(httpService.MESSAGE_TOAST);
+        Message msg = mHandler.obtainMessage(MESSAGE_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(httpService.TOAST, "Не удалось подключится");
+        bundle.putString(TOAST, "Не удалось подключится");
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -218,9 +260,9 @@ public class BluetoothService {
      */
     private void connectionLost() {
         // Send a failure message back to the Activity
-        Message msg = mHandler.obtainMessage(httpService.MESSAGE_TOAST);
+        Message msg = mHandler.obtainMessage(MESSAGE_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(httpService.TOAST, "Соединение разорвоно");
+        bundle.putString(TOAST, "Соединение разорвоно");
         msg.setData(bundle);
         mHandler.sendMessage(msg);
         
@@ -246,7 +288,7 @@ public class BluetoothService {
 
             // Create a new listening server socket
             try {
-                   tmp = mAdapter.listenUsingRfcommWithServiceRecord(NAME_SECURE,
+                   tmp = mBluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME_SECURE,
                         MY_UUID_SECURE);
                 
             } catch (IOException e) {
@@ -344,7 +386,7 @@ public class BluetoothService {
             setName("ConnectThread" + mSocketType);
 
             // Always cancel discovery because it will slow down a connection
-            mAdapter.cancelDiscovery();
+            mBluetoothAdapter.cancelDiscovery();
 
             // Make a connection to the BluetoothSocket
             try {
@@ -424,7 +466,7 @@ public class BluetoothService {
                     bytes = mmInStream.read(buffer);
 
                     // Send the obtained bytes to the UI Activity
-                    mHandler.obtainMessage(httpService.MESSAGE_READ, bytes, -1, buffer)
+                    mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer)
                             .sendToTarget();
                 } catch (IOException e) {
                     Log.e(TAG, "disconnected", e);
@@ -447,7 +489,7 @@ public class BluetoothService {
                 
                 mmOutStream.flush();
                 // Share the sent message back to the UI Activity
-                mHandler.obtainMessage(httpService.MESSAGE_WRITE, -1, -1, buffer)
+                mHandler.obtainMessage(MESSAGE_WRITE, -1, -1, buffer)
                         .sendToTarget();
             } catch (IOException e) {
                 Log.e(TAG, "Exception during write", e);
