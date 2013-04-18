@@ -191,7 +191,10 @@ public class HttpService {
 							input = am.open("controll.html"); // open file
 						} else if (tok[1].equals("/video.html")) {
 							input = am.open("video.html"); // open file
-						} else {
+						} else if (tok[1].indexOf("/command") == 0){
+							input = am.open("index.html");
+							mBTService.write(NXTCommander.playTone(5000, 1000));
+						}else {
 							input = am.open("404.html"); // open file
 						}
 
