@@ -103,7 +103,7 @@ public class BluetoothService {
 		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
 
 		mConnectedDeviceName = device.getName();
-		Message msg = mHandler.obtainMessage(MainActivity.BT_SERVICE_MESSAGE);
+		Message msg = mHandler.obtainMessage(MainActivity.BT_SERVICE_MESSAGE,MainActivity.SET_NAME);
 		Bundle bundle = new Bundle();
 		bundle.putString("DEVICE_NAME", device.getName());
 		msg.setData(bundle);
