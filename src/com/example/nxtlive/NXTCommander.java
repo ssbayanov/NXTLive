@@ -13,11 +13,11 @@ public class NXTCommander {
 		return (new String(send)+programmName+'\0').getBytes();
 	} 
 	
-	/*public static byte[] run(String programmName){
+	public static byte[] run(String programmName){
 		char[] send = {(char) programmName.length(), 0x00, 0x80, 0x00};
 
 		return (new String(send)+programmName+'\0').getBytes();
-	} */
+	}
 	
 	public static byte[] sendMesage(String msg, int inputBox){
 		byte[] send = {(byte) (msg.length()+5),(byte) 0x00,(byte) 0x80,(byte) 0x09, (byte) inputBox,(byte) (msg.length())};

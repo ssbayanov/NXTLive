@@ -46,15 +46,13 @@ public class HttpService {
 	OutputStream out = null;
 	ServerSocket ss = null;
 	Socket s = null;
-	
+
 	BluetoothService mBTService;
 
-	
-	
 	public HttpService(Context context, Handler handler) {
 		mainContext = context;
 		mHandler = handler;
-		
+
 		mBTService = new BluetoothService(context, mHandler);
 
 		try {
@@ -69,10 +67,8 @@ public class HttpService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		getIp();
-		
-		
 
 	}
 
@@ -146,7 +142,7 @@ public class HttpService {
 					if (s != null) {
 						s.close();
 					}
-					
+
 					getIp();
 					s = ss.accept(); // wait new connection
 
@@ -168,11 +164,11 @@ public class HttpService {
 
 					String[] tok = query.split("[ \r\n][ \r\n]*");
 
-					if (D)
-						Log.d(TAG, "Get query: " + query);
+					/*if (D)
+						Log.d(TAG, "Get query: " + query);*/
 
 					if (tok.length > 1 && D) {
-						Log.d(TAG, "query page: \""+tok[1]+"\"");
+						Log.d(TAG, "query page: \"" + tok[1] + "\"");
 						// Log.i("TcpServer", "received: " + query);
 
 						out.write(("HTTP/1.0 200 Ok\r\n"
@@ -184,35 +180,58 @@ public class HttpService {
 						AssetManager am = mainContext.getAssets();
 
 						InputStream input = null;
-						if (tok[1].equals("/") || tok[1].equals("/index.html")) {
+						/*if (tok[1].equals("/") || tok[1].equals("/index.html")) {
 							input = am.open("index.html"); // open file
 							Log.d(TAG, "sending page: index.html");
 						} else if (tok[1].equals("/controll.html")) {
 							input = am.open("controll.html"); // open file
 						} else if (tok[1].equals("/video.html")) {
 							input = am.open("video.html"); // open file
-						} else if (tok[1].indexOf("/command") == 0){
+						} else if (tok[1].equals("/command/sound")) {
 							input = am.open("index.html");
 							mBTService.write(NXTCommander.playTone(5000, 1000));
-						}else {
+						} else {
+							input = am.open("404.html"); // open file
+						}*/
+						
+						if (tok[1].indexOf("/") == 0) {
+							String[] page = query.split("/");
+							if (page[0].equals("command")) {
+								if (page[1].equals("sound"))
+									mBTService.write(NXTCommander.playTone(
+											5000, 1000));
+								else 
+									mBTService.write(NXTCommander.sendMesage(page[1], 1));
+								input = am.open("nullPage");
+							} else if (tok[1].equals("/"))
+								input = am.open("index.html");
+							else
+								input = am.open(page[0]);
+						} else {
 							input = am.open("404.html"); // open file
 						}
 
-						size = input.available(); // get size file
+						try {
+							size = input.available(); // get size file
+						} catch (IOException e) {
+							input = am.open("404.html");
+							size = input.available();
+						}
+
 						buffer = new byte[size];
 						input.read(buffer);
 						input.close();
-						
+
 						String page = new String(buffer);
 						page = page.replace("%ip%", getIPAddress(true));
-						page = page.replace("%port%", ""+ss.getLocalPort());
-						page = page.replace("%vport%", ""+(ss.getLocalPort()+1));
+						page = page.replace("%port%", "" + ss.getLocalPort());
+						page = page.replace("%vport%", ""
+								+ (ss.getLocalPort() + 1));
 
 						out.write(page.getBytes());
 
 						out.flush();
-					}
-					else
+					} else
 						Log.d(TAG, "Empty query page");
 
 				}
