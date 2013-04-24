@@ -1,37 +1,110 @@
 ﻿<html>
 	<head>
 		<title>Панель управления NXTLive. Управление</title>
-		<script type="text/javascript">
-			var count;
-			function send(p){
-				document.getElementById("sender").src = p;	
-			}
 
-			function keyDown(e) {
-				count++;
-				var keycode = e.keyCode?e.keyCode:e.keyChar;//теперь в keycode код клавиши, и с ним можно делать все что угодно
-				document.getElementById("keycode").value = keycode;
-				document.getElementById("count").value = count;
-				return false;
-			}
-		</script>
 		<style>
 			input {width:30;height:24;}
 			div {text-align: center}
+			
+			.arrow {
+				position: relative;
+				border-style: dashed solid dashed solid;
+				border-color: transparent;
+				display: -moz-inline-box;
+				display: inline;
+				width: 0;
+				height: 0;
+				line-height: 0;
+				font-size: 0;
+				padding-top: 1px;
+				}
+			
+			.arrowLeft{
+				border-right-color: #fff;
+				border-width: 6px 10px;
+				right: 6px;
+				top: 25px
+			}
+			.arrowTop{
+				border-bottom-color: #fff;
+				border-width: 10px 6px;
+				top: 15px
+			}
+			.arrowRight{
+				
+				border-left-color: #fff;
+				border-width: 6px 10px;
+				left: 6px;
+				top: 25px
+			}
+			.arrowBottom{
+				border-top-color: #fff;
+				border-width: 10px 6px;
+				top: 25px
+			}
+			.video{
+				width: 640px;
+				height: 480px;
+				background: url('http://%ip%:%vport%');
+				position: relative;
+				background-size: cover;
+			}
+			.button{
+				border-radius: 33px;
+				width: 60px;
+				height: 50px;
+				border: 4px solid #fff;
+				opacity: 0.50;
+				display: inline-block;
+				cursor: pointer;
+				margin: 5px;
+				padding-top: 10px
+			}
+			
+			
+			.leftButtons{
+				position: absolute;
+				left: 0px;
+				display: inline-block;
+				bottom: 0px;
+			}
+			
+			.rightButtons{
+				position: absolute;
+				right: 0px;
+				display: inline-block;
+				bottom: 0px;
+			}
 		</style>
+		
+		<script type="text/javascript" src="/script.js"></script>
 	</head>
 	<body style="background-color: #ddd; font-family: Helvetica, Arial, sans-serif;">
 		<h3>Панель управления NXTLive</h3><br>
 		<a href="/">На главную</a><br>
-		<img src="htpp://%ip%:%vport%" alt="Video feed"><br>
-		<div>
-			<input type="button" value="/\" onMouseDown="send(1)" onMouseUp="send(0)">
+		<div class="video" >
+			<div style="width: 100px;" class="leftButtons" >
+				<div>
+					<div class="button" onMouseDown="doAction('motors/'+A+'/-60')" onMouseUp="doAction('motors/'+A+'/0')"><span class="arrow arrowTop"></span></div>
+				</div>
+				<div>
+					<div class="button" onMouseDown="doAction('motors/'+A+'/60')" onMouseUp="doAction('motors/'+A+'/0')"><span class="arrow arrowBottom"></span></div>
+				</div>
+			</div>
+			<div style="width: 270px;" class="rightButtons">
+				<div style="width: 270px;">
+					<div class="button" onMouseDown="doAction('motors/'+(B+C)+'/100')" onMouseUp="doAction('motors/'+(B+C)+'/0')"><span class="arrow arrowTop"></span></div>
+				</div>
+				<div style="width: 270px;">
+					<div class="button" onMouseDown="doAction('motors/'+(-B+C)+'/65')" onMouseUp="doAction('motors/'+(B+C)+'/0')"><span class="arrow arrowLeft"></span></div>
+					<div class="button" onMouseDown="doAction('motors/'+(B+C)+'/-100')" onMouseUp="doAction('motors/'+(B+C)+'/0')"><span class="arrow arrowBottom"></span></div>
+					<div class="button" onMouseDown="doAction('motors/'+(B-C)+'/65')" onMouseUp="doAction('motors/'+(B+C)+'/0')"><span class="arrow arrowRight"></span></div>
+				</div>
+			</div>
 		</div>
-		<div>
-			<input type="button" value="<" onMouseDown="send(2)" onMouseUp="send(0)">
-			<input type="button" value="\/" onMouseDown="send(3)" onMouseUp="send(0)">
-			<input type="button" value=">" onMouseDown="send(4)" onMouseUp="send(0)">
-			<input type="text" id="count" size="40"><input type="text" id="keycode" size="40">
-		</div>
+		
+		<input type="text" id="count" size="40"><input type="text" id="keycode" size="40"><br>
+		<button command="sound" onclick="send()">Воспроизвести звук</button>
+		<button onclick="sendMessage('DD',0)">Проехать 1 оборот</button>
 	</body>
 </html>

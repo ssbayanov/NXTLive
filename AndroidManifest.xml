@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.nxtlive"
+    package="com.communication.nxtlive"
     android:versionCode="1"
     android:versionName="1.0" >
 
@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <uses-feature android:name="android.hardware.camera" />
 
@@ -23,7 +24,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="com.example.nxtlive.MainActivity"
+            android:name="com.communication.nxtlive.MainActivity"
             android:label="@string/app_name"
             android:screenOrientation="landscape" >
             <intent-filter>
@@ -33,11 +34,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.nxtlive.SettingsActivity"
+            android:name="com.communication.nxtlive.SettingsActivity"
             android:label="@string/action_settings" >
         </activity>
         <activity
-            android:name="com.example.nxtlive.DeviceListActivity"
+            android:name="com.communication.nxtlive.DeviceListActivity"
             android:label="@string/title_activity_device_list" >
         </activity>
     </application>
