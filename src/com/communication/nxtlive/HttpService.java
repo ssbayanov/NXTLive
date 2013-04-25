@@ -89,7 +89,7 @@ public class HttpService {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
 			Camera.CameraInfo info = new Camera.CameraInfo();
 
@@ -114,7 +114,6 @@ public class HttpService {
 
 	public void onResume() {
 
-
 	}
 
 	public synchronized void start() {
@@ -137,11 +136,13 @@ public class HttpService {
 
 		mBTService.stop();
 
-		if (camera != null)
+		if (camera != null) {
+			camera.setPreviewCallback(null);
 			camera.release();
+		}
 	}
-	
-	//-------------------------------------------------------------------------
+
+	// -------------------------------------------------------------------------
 	/*
 	 * 
 	 * Camera functions
@@ -170,8 +171,7 @@ public class HttpService {
 	}
 
 	private void initPreview(int width, int height) {
-		
-	
+
 		if (camera != null && surfaceHolder.getSurface() != null) {
 			try {
 				camera.setPreviewDisplay(surfaceHolder);
@@ -226,15 +226,15 @@ public class HttpService {
 		@Override
 		public void onPreviewFrame(byte[] data, Camera camera) {
 			// TODO Auto-generated method stub
-				Size previewSize = camera.getParameters().getPreviewSize();
-				YuvImage yuvimage = new YuvImage(data, ImageFormat.NV21,
-						previewSize.width, previewSize.height, null);
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				yuvimage.compressToJpeg(new Rect(0, 0, previewSize.width,
-						previewSize.height), 30, baos);
-				baos.toByteArray();
+			Size previewSize = camera.getParameters().getPreviewSize();
+			YuvImage yuvimage = new YuvImage(data, ImageFormat.NV21,
+					previewSize.width, previewSize.height, null);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			yuvimage.compressToJpeg(new Rect(0, 0, previewSize.width,
+					previewSize.height), 30, baos);
+			baos.toByteArray();
 
-				lastPicture = baos.toByteArray();
+			lastPicture = baos.toByteArray();
 		}
 	};
 
@@ -286,61 +286,80 @@ public class HttpService {
 	}
 
 	private class SendThread extends Thread {
-		private String query;
 		private OutputStream out;
 		private Socket socket = null;
 
-		public SendThread(Socket s, String q) {
-			query = q;
+		public SendThread(Socket s) {
 			socket = s;
 		}
 
 		public void run() {
-			String[] tok = query.split("[ \r\n][ \r\n]*");
+			try {
+				in = socket.getInputStream();
 
-			if (D)
-				Log.d(TAG, "Get query: " + query);
+				int size = in.available(); // get size query
 
-			if (tok.length > 1) {
-
-				if (D)
-					Log.d(TAG, "query page: \"" + tok[1] + "\"");
-				// Log.i("TcpServer", "received: " + query);
-
-				if (tok[1].indexOf("/") == 0 && tok[1].indexOf("../") == -1) {
-					if (tok[1].equals("/")) {
-						writePage("index.html");
-					} else {
-						String[] page = tok[1].split("/");
-						if (page[1].equals("commands")) {
-							if (page[2].equals("sound")) {
-
-								mBTService.write(NXTCommander.playTone(
-										(short) 5000, (short) 1000));
-								Log.d(TAG, "send command: \"" + page[2] + "\"");
-							} else if (page[2].equals("motors")) {
-								mBTService.write(NXTCommander.run(
-										Integer.parseInt(page[3]),
-										Integer.parseInt(page[4])));
-							}
-							writePage("nullPage");
-						} else if (page[1].equals("message")) {
-							mBTService.write(NXTCommander.sendMesage(page[3],
-									Integer.parseInt(page[2])));
-							writePage("nullPage");
-						} else if (page[1].equals("videoStream")) {
-							writeVideoStream();
-						} else {
-							Log.d(TAG, "send page: \"" + page[1] + "\"");
-							writePage(page[1]);
-						}
-					}
-				} else {
-					writePage("404.html"); // open file
+				if (size == 0) {
+					SystemClock.sleep(100);
+					size = in.available();
 				}
 
-			} else {
-				Log.d(TAG, "Empty query page");
+				byte[] buffer = new byte[size];
+
+				in.read(buffer); // read all from buffer
+
+				String query = new String(buffer);
+
+				String[] tok = query.split("[ \r\n][ \r\n]*");
+
+				if (D)
+					Log.d(TAG, "Get query: " + query);
+
+				if (tok.length > 1) {
+
+					if (D)
+						Log.d(TAG, "query page: \"" + tok[1] + "\"");
+					// Log.i("TcpServer", "received: " + query);
+
+					if (tok[1].indexOf("/") == 0 && tok[1].indexOf("../") == -1) {
+						if (tok[1].equals("/")) {
+							writePage("index.html");
+						} else {
+							String[] page = tok[1].split("/");
+							if (page[1].equals("commands")) {
+								if (page[2].equals("sound")) {
+
+									mBTService.write(NXTCommander.playTone(
+											(short) 5000, (short) 1000));
+									Log.d(TAG, "send command: \"" + page[2]
+											+ "\"");
+								} else if (page[2].equals("motors")) {
+									mBTService.write(NXTCommander.run(
+											Integer.parseInt(page[3]),
+											Integer.parseInt(page[4])));
+								}
+								writePage("nullPage");
+							} else if (page[1].equals("message")) {
+								mBTService.write(NXTCommander.sendMesage(
+										page[3], Integer.parseInt(page[2])));
+								writePage("nullPage");
+							} else if (page[1].equals("videoStream")) {
+								writeVideoStream();
+							} else {
+								Log.d(TAG, "send page: \"" + page[1] + "\"");
+								writePage(page[1]);
+							}
+						}
+					} else {
+						writePage("404.html"); // open file
+					}
+
+				} else {
+					Log.d(TAG, "Empty query page");
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 
@@ -450,21 +469,8 @@ public class HttpService {
 				getIp();
 				while (!ss.isClosed()) {
 
-					Socket s = new Socket();
-
-					s = ss.accept(); // wait new connection
-
-					if (D)
-						Log.d(TAG, "Try create mHttpThread");
-
-					in = s.getInputStream();
-
-					int size = in.available(); // get size query
-					byte[] buffer = new byte[size];
-
-					in.read(buffer); // read all from buffer
-
-					SendThread send = new SendThread(s, new String(buffer));
+					SendThread send = new SendThread(ss.accept()); // wait new
+																	// connection
 					send.start();
 
 				}
