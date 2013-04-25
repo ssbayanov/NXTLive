@@ -1,0 +1,37 @@
+﻿<html>
+	<head>
+		<title>Панель управления NXTLive. Управление</title>
+
+		<link rel="stylesheet" type="text/css" href="/style.css">
+		
+		<script type="text/javascript" src="/script.js"></script>
+	</head>
+	<body>
+		<h3>Панель управления NXTLive</h3><br>
+		<a href="/">На главную</a><br>
+		<div class="video" >
+			<div style="width: 100px;" class="leftButtons" >
+				<div>
+					<div class="button" onMouseDown="sendMessage('B',0)" onMouseUp="sendMessage('P',0)" onMouseOver="sendMessage('P',0)"><span class="arrow arrowTop"></span></div>
+				</div>
+				<div>
+					<div class="button" onMouseDown="sendMessage('H',0)" onMouseUp="sendMessage('P',0)" onMouseOver="sendMessage('P',0)"><span class="arrow arrowBottom"></span></div>
+				</div>
+			</div>
+			<div style="width: 270px;" class="rightButtons">
+				<div style="width: 270px;">
+					<div class="button" onMouseDown="sendMessage('W',0)" onMouseUp="sendMessage('T',0)" onMouseOver="sendMessage('T',0)"><span class="arrow arrowTop"></span></div>
+				</div>
+				<div style="width: 270px;">
+					<div class="button" onMouseDown="sendMessage('A',0)" onMouseUp="sendMessage('T',0)" onMouseOver="sendMessage('T',0)"><span class="arrow arrowLeft"></span></div>
+					<div class="button" onMouseDown="sendMessage('S',0)" onMouseUp="sendMessage('T',0)" onMouseOver="sendMessage('T',0)"><span class="arrow arrowBottom"></span></div>
+					<div class="button" onMouseDown="sendMessage('D',0)" onMouseUp="sendMessage('T',0)" onMouseOver="sendMessage('T',0)"><span class="arrow arrowRight"></span></div>
+				</div>
+			</div>
+		</div>
+		
+		<input type="text" id="count" size="40"><input type="text" id="keycode" size="40"><br>
+		<button command="sound" onclick="send()">Воспроизвести звук</button>
+		<button onclick="sendMessage('DD',0)">Проехать 1 оборот</button>
+	</body>
+</html>

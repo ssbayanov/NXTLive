@@ -17,7 +17,7 @@ public class NXTCommander {
 	}
 
 	public static byte[] run(int motors, int power) {
-		
+
 		int cL = 14; //command length
 
 		byte z[];
@@ -140,7 +140,7 @@ public class NXTCommander {
 
 		return null;
 	}
-	
+
 /*	public static int textToMotors(String text){
 		int motors = 0;
 		
@@ -153,7 +153,7 @@ public class NXTCommander {
 		
 		return motors;
 	}*/
-	
+
 	public static byte[] setOutput(int motor, int power) {
 
 		byte[] send = { 12, 0x00, -128, 4, (byte) (motor & 0x00FF), (byte) (power & 0x00FF), 1, 0, 100, 32, 0, 0, 0, 0};
@@ -162,17 +162,17 @@ public class NXTCommander {
 	}
 
 	public static byte[] sendMesage(String msg, int mailBox) {
-		
+
 		byte z[] = new byte[msg.length()+7];
-		
-		
+
+
 		byte[] send = { (byte) (msg.length() + 5), 0, -128,
 				9, (byte) (mailBox & 0x00FF), (byte) (msg.length() & 0x00FF) };
 
 		System.arraycopy(send, 0, z, 0, send.length);
 		System.arraycopy(msg.getBytes(), 0, z, send.length, msg.length());
 		z[z.length-1] = 0;
-		
+
 		return z;
 	}
 

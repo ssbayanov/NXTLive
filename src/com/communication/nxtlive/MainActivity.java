@@ -4,7 +4,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -14,8 +14,8 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
-import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 
 import android.util.Log;
 import android.widget.TextView;
@@ -32,14 +32,14 @@ public class MainActivity extends Activity {
 	private String mConnectedDeviceName = null;
 
 	// Codes of MJPGStreamer handle
-	public static final int CAMERA_FOUND = 0;
-	public static final int CAMERA_NOT_FOUND = 1;
 
 	// Codes of HttpService handle
 
 	public static final int LOCAL_IP = 1;
 	public static final int NOT_CONNECTED = 2;
 	public static final int BT_SERVICE_MESSAGE = 3;
+	public static final int CAMERA_FOUND = 4;
+	public static final int CAMERA_NOT_FOUND = 5;
 
 	// Codes of BluetoothService handle
 	public static final int SET_NAME = 1;
@@ -53,15 +53,11 @@ public class MainActivity extends Activity {
 
 	private HttpService mHttpService = null;
 
-	private MJPGStreamer mJPEGStreamer = null;
-
 	public SurfaceView surfaceView;
 
 	public static SurfaceHolder surfaceHolder;
 
 	private MenuItem btConnect;
-
-	private PowerManager.WakeLock wl;
 
 	public static final int REQUEST_CONNECT_DEVICE = 1;
 	public static final int REQUEST_DISCONNECT_DEVICE = 2;
@@ -91,11 +87,7 @@ public class MainActivity extends Activity {
 
 		surfaceView.setDrawingCacheEnabled(true);
 
-		mHttpService = new HttpService(this, mHttpServiceHandler);
-
-		mJPEGStreamer = new MJPGStreamer(this, mStreamerHandler, surfaceView);
-
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		mHttpService = new HttpService(this, mHttpServiceHandler, surfaceView);
 
 	}
 
@@ -104,6 +96,24 @@ public class MainActivity extends Activity {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
+	}
+
+	private void getPrefs() {
+		// Get the xml/preferences.xml preferences
+		SharedPreferences prefs = PreferenceManager
+				.getDefaultSharedPreferences(getBaseContext());
+		setHttpStatus(prefs.getString("network_frontend_port", "12345"));
+
+	}
+
+	@Override
+	public void onStart() {
+		super.onStart();
+
+		// get preferences
+		getPrefs();
+
+		//
 	}
 
 	public void showToast(String text) {
@@ -143,15 +153,6 @@ public class MainActivity extends Activity {
 			case NOT_CONNECTED:
 				setHttpStatus("Сервер не запущен");
 				break;
-
-			}
-		}
-	};
-
-	private final Handler mStreamerHandler = new Handler() {
-		@Override
-		public void handleMessage(Message msg) {
-			switch (msg.what) {
 			case CAMERA_FOUND:
 				Toast.makeText(getApplicationContext(), "Камера найдена",
 						Toast.LENGTH_LONG).show();
@@ -161,6 +162,7 @@ public class MainActivity extends Activity {
 						Toast.LENGTH_LONG).show();
 				break;
 			}
+
 		}
 	};
 
@@ -222,24 +224,13 @@ public class MainActivity extends Activity {
 
 	@Override
 	protected void onPause() {
-		if (mJPEGStreamer != null)
-			if (mJPEGStreamer.camera != null) {
-				mJPEGStreamer.camera.release();
-				mJPEGStreamer.camera = null;
-			}
-		if (wl != null)
-			wl.release();
+		//if (mHttpService != null)
+			//mHttpService.onPause();
 		super.onPause();
-
 	}
 
 	@Override
 	protected void onDestroy() {
-
-		/*
-		 * if (mJPEGStreamer != null) { mJPEGStreamer.stop(); if
-		 * (mJPEGStreamer.camera. != null) mJPEGStreamer.camera.release(); }
-		 */
 		if (mHttpService != null)
 			mHttpService.stop();
 		super.onDestroy();
@@ -248,10 +239,15 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if (mJPEGStreamer != null)
-			mJPEGStreamer.onResume();
-		if (wl != null)
-			wl.acquire();
+		if (mHttpService != null)
+			mHttpService.onResume();
+
+		/*MenuItem item = (MenuItem) this.findViewById(R.id.action_startServer);
+		if (!mHttpService.isEnabled) {
+			item.setTitle(R.string.start_server);
+		} else {
+			item.setTitle(R.string.stop_server);
+		}*/
 
 	}
 
@@ -299,18 +295,10 @@ public class MainActivity extends Activity {
 		case R.id.action_startServer:
 			if (!mHttpService.isEnabled) {
 				mHttpService.start();
-				mJPEGStreamer.start();
 				item.setTitle(R.string.stop_server);
-				PowerManager pm = (PowerManager) getBaseContext()
-						.getSystemService(Context.POWER_SERVICE);
-				wl = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK
-						| PowerManager.ON_AFTER_RELEASE, "wakeup");
-				wl.acquire();
 			} else {
 				mHttpService.stop();
-				mJPEGStreamer.stop();
 				item.setTitle(R.string.start_server);
-				wl.release();
 			}
 			return true;
 		case R.id.action_settings:
